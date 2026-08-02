@@ -20,9 +20,15 @@ import {
 } from "lucide-react";
 import { SecretaryAvatar } from "@/components/SecretaryAvatar";
 import { greeting as buildGreeting } from "@/lib/secretaryService";
-import { useAppStore, usePendingTodos, useReminderPersons, daysSinceLastContact } from "@/store/appStore";
+import {
+  useAppStore,
+  usePendingTodos,
+  useReminderPersons,
+  useOverdueTodos,
+  useTodaySchedules,
+  daysSinceLastContact,
+} from "@/store/appStore";
 import { recordCategoryLabels } from "@/types/models";
-import { showNotReady } from "@/lib/notReady";
 
 const featureCards = [
   { icon: Calendar, label: "カレンダー", color: "text-accent-crimson", bg: "bg-accent-crimson/12", href: "/calendar" },
@@ -36,11 +42,16 @@ const featureCards = [
 ] as const;
 
 export default function HomePage() {
-  const pendingTodos = usePendingTodos().slice(0, 3);
-  const reminderPersons = useReminderPersons().slice(0, 2);
+  const allPendingTodos = usePendingTodos();
+  const allReminderPersons = useReminderPersons();
+  const overdueTodos = useOverdueTodos();
+  const todaySchedules = useTodaySchedules();
+  const pendingTodos = allPendingTodos.slice(0, 3);
+  const reminderPersons = allReminderPersons.slice(0, 2);
   const records = useAppStore((s) => s.records).slice(0, 3);
   const greetingText = buildGreeting();
   const [recordSheetOpen, setRecordSheetOpen] = useState(false);
+  const hasNotifications = overdueTodos.length > 0 || allReminderPersons.length > 0 || todaySchedules.length > 0;
 
   return (
     <div className="flex h-full flex-col">
@@ -50,9 +61,12 @@ export default function HomePage() {
           <Link href="/search" aria-label="横断検索" className="rounded-full p-2">
             <Search size={20} />
           </Link>
-          <button aria-label="通知" className="rounded-full p-2" onClick={() => showNotReady("通知")}>
+          <Link href="/notifications" aria-label="通知" className="relative rounded-full p-2">
             <Bell size={20} />
-          </button>
+            {hasNotifications && (
+              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-error ring-2 ring-white" />
+            )}
+          </Link>
         </div>
       </header>
 

@@ -3,11 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ChevronRight, Info, Loader2 } from "lucide-react";
-import { useAppStore } from "@/store/appStore";
+import { useAppStore, planLimits } from "@/store/appStore";
 import { googleCalendarService, useGoogleCalendarConnection } from "@/lib/googleCalendarService";
-import { showNotReady } from "@/lib/notReady";
+import { showNotReady, showToast } from "@/lib/notReady";
 import { SettingsSection, SettingsRow } from "@/components/settings/SettingsSection";
 import { PlanUsageBar } from "@/components/settings/PlanUsageBar";
+import { Dialog } from "@/components/ui/Dialog";
 
 const honorifics = ["先生", "さん"];
 const briefingTimes = ["06:30", "07:00", "07:30", "08:00", "08:30"];
@@ -19,7 +20,12 @@ export default function SettingsPage() {
   const updateProfile = useAppStore((s) => s.updateProfile);
   const persons = useAppStore((s) => s.persons);
   const records = useAppStore((s) => s.records);
+  const planTier = useAppStore((s) => s.planTier);
+  const limits = planLimits[planTier];
+  const resetAllData = useAppStore((s) => s.resetAllData);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   // Google Identity Servicesはトークンクライアント方式のためセッション自動復元はない。
   // 「連携する」ボタンが押されたときに初めて認可フローが走る。
   const google = useGoogleCalendarConnection();
@@ -37,6 +43,35 @@ export default function SettingsPage() {
 
   function disconnectGoogle() {
     googleCalendarService.disconnect();
+  }
+
+  function exportData() {
+    const state = useAppStore.getState();
+    const data = {
+      exportedAt: new Date().toISOString(),
+      profile: state.profile,
+      records: state.records,
+      persons: state.persons,
+      schedules: state.schedules,
+      todos: state.todos,
+      expenses: state.expenses,
+      postDrafts: state.postDrafts,
+      benchmarkAccounts: state.benchmarkAccounts,
+      gikaiTemplates: state.gikaiTemplates,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `enroot-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("データをエクスポートしました");
+  }
+
+  function confirmDeleteAccount() {
+    setDeleteDialogOpen(false);
+    resetAllData();
   }
 
   return (
@@ -58,13 +93,13 @@ export default function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection title="プラン">
-          <SettingsRow title="現在のプラン" trailing={<span>フリー</span>} />
-          <PlanUsageBar label="記録" used={records.length} limit={30} />
-          <PlanUsageBar label="名刺管理" used={persons.length} limit={50} />
+          <SettingsRow title="現在のプラン" trailing={<span>{planTier === "pro" ? "プロ" : "フリー"}</span>} />
+          <PlanUsageBar label="記録" used={records.length} limit={limits.records} />
+          <PlanUsageBar label="名刺管理" used={persons.length} limit={limits.persons} />
           <SettingsRow
             title="プランを変更する"
             trailing={<ChevronRight size={20} className="text-text-secondary" />}
-            onClick={() => showNotReady("プラン変更")}
+            onClick={() => router.push("/settings/plan")}
           />
         </SettingsSection>
 
@@ -219,29 +254,63 @@ export default function SettingsPage() {
             title="活用レポート"
             subtitle="メモ・繋がり・投稿・経費の月次サマリー"
             trailing={<ChevronRight size={20} className="text-text-secondary" />}
-            onClick={() => showNotReady("活用レポート")}
+            onClick={() => router.push("/settings/report")}
           />
           <SettingsRow
             title="Google Drive連携"
-            subtitle="未接続"
-            trailing={<ChevronRight size={20} className="text-text-secondary" />}
-            onClick={() => showNotReady("Google Drive連携")}
+            subtitle="未設定（管理者側でのAPI連携設定が必要です）"
+            trailing={<Info size={18} className="text-text-secondary" />}
           />
         </SettingsSection>
 
         <SettingsSection title="アカウント">
-          <SettingsRow title="パスワード変更" onClick={() => showNotReady("パスワード変更")} />
-          <SettingsRow title="データエクスポート" onClick={() => showNotReady("データエクスポート")} />
-          <SettingsRow title="ログアウト" onClick={() => showNotReady("ログアウト")} />
-          <SettingsRow title="アカウント削除" danger onClick={() => showNotReady("アカウント削除")} />
+          <SettingsRow title="パスワード変更" onClick={() => router.push("/settings/password")} />
+          <SettingsRow title="データエクスポート" subtitle="記録・名刺・経費等をJSONで保存" onClick={exportData} />
+          <SettingsRow title="ログアウト" onClick={() => setLogoutDialogOpen(true)} />
+          <SettingsRow title="アカウント削除" danger onClick={() => setDeleteDialogOpen(true)} />
         </SettingsSection>
 
         <SettingsSection title="アプリ情報">
           <SettingsRow title="バージョン" trailing={<span>1.0.0</span>} />
-          <SettingsRow title="利用規約 / プライバシーポリシー" onClick={() => showNotReady("利用規約表示")} />
-          <SettingsRow title="お問い合わせ" onClick={() => showNotReady("お問い合わせ")} />
+          <SettingsRow title="利用規約 / プライバシーポリシー" onClick={() => router.push("/settings/legal")} />
+          <SettingsRow title="お問い合わせ" onClick={() => router.push("/settings/contact")} />
         </SettingsSection>
       </div>
+
+      <Dialog
+        open={logoutDialogOpen}
+        onOpenChange={setLogoutDialogOpen}
+        title="ログアウト"
+        footer={
+          <button onClick={() => setLogoutDialogOpen(false)} className="rounded-input bg-brand-green px-4 py-2 font-semibold text-white">
+            閉じる
+          </button>
+        }
+      >
+        <p className="leading-relaxed">
+          このプロトタイプはお一人でお使いいただく前提のため、ログイン機能はありません。実際のサービスでは、ここからログアウトできるようになります。
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="アカウント削除"
+        footer={
+          <>
+            <button onClick={() => setDeleteDialogOpen(false)} className="px-3 py-2 text-text-secondary">
+              キャンセル
+            </button>
+            <button onClick={confirmDeleteAccount} className="rounded-input bg-error px-4 py-2 font-semibold text-white">
+              削除する
+            </button>
+          </>
+        }
+      >
+        <p className="leading-relaxed">
+          記録・名刺管理・経費・ToDo等、このアプリに保存されているすべてのデータが削除され、最初の設定からやり直しになります。この操作は取り消せません。よろしいですか？
+        </p>
+      </Dialog>
     </div>
   );
 }

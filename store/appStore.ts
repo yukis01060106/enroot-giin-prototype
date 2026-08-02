@@ -22,6 +22,14 @@ export const monthlyExpenseBudget = 100000;
 /** 発信の週次目標回数。 */
 export const weeklyPostingTarget = 2;
 
+const DEFAULT_PRESET_PERSON_TAGS = ["町内会", "PTA", "商工会", "後援会", "支援者", "議員", "行政"];
+
+export type PlanTier = "free" | "pro";
+export const planLimits: Record<PlanTier, { records: number; persons: number }> = {
+  free: { records: 30, persons: 50 },
+  pro: { records: 1000, persons: 1000 },
+};
+
 interface AppState {
   records: RecordModel[];
   persons: PersonModel[];
@@ -39,6 +47,21 @@ interface AppState {
   presetPersonTags: string[];
   addPresetPersonTag: (tag: string) => void;
   removePresetPersonTag: (tag: string) => void;
+
+  planTier: PlanTier;
+  setPlanTier: (tier: PlanTier) => void;
+
+  /** オンライン会議のデフォルト設定（/meetings の「会議設定」から変更）。 */
+  defaultMeetingProvider: "google_meet" | "zoom";
+  defaultMeetingDurationMin: number;
+  updateMeetingDefaults: (params: { provider?: "google_meet" | "zoom"; durationMin?: number }) => void;
+
+  /** 設定画面「アカウント削除」用。プロフィール以外の全データを初期状態に戻し、オンボーディングからやり直させる。 */
+  resetAllData: () => void;
+
+  /** ねっこの会の次回開催（ISO日時）への参加登録。日時ごとに管理するので、開催が終われば自然に未登録へ戻る。 */
+  nekkoRsvpFor: string | null;
+  setNekkoRsvp: (dateIso: string | null) => void;
 
   /**
    * Flutter版 main.dart が SharedPreferences から同期読みしていた2つのフラグ。
@@ -341,7 +364,7 @@ export const useAppStore = create<AppState>()(
       completeOnboarding: () => set({ onboardingComplete: true }),
       markHomeOpened: () => set({ hasOpenedHome: true }),
 
-      presetPersonTags: ["町内会", "PTA", "商工会", "後援会", "支援者", "議員", "行政"],
+      presetPersonTags: [...DEFAULT_PRESET_PERSON_TAGS],
       addPresetPersonTag: (tag) =>
         set((state) =>
           state.presetPersonTags.includes(tag)
@@ -350,6 +373,34 @@ export const useAppStore = create<AppState>()(
         ),
       removePresetPersonTag: (tag) =>
         set((state) => ({ presetPersonTags: state.presetPersonTags.filter((t) => t !== tag) })),
+
+      planTier: "free",
+      setPlanTier: (tier) => set({ planTier: tier }),
+
+      defaultMeetingProvider: "google_meet",
+      defaultMeetingDurationMin: 30,
+      updateMeetingDefaults: ({ provider, durationMin }) =>
+        set((state) => ({
+          defaultMeetingProvider: provider ?? state.defaultMeetingProvider,
+          defaultMeetingDurationMin: durationMin ?? state.defaultMeetingDurationMin,
+        })),
+
+      // setはshallowマージなので、ここで返さないミューテーター/派生ゲッター関数群は
+      // そのまま維持される（seedData()はデータフィールドのみを返す設計）。
+      resetAllData: () =>
+        set(() => ({
+          ...seedData(defaultProfile),
+          presetPersonTags: [...DEFAULT_PRESET_PERSON_TAGS],
+          planTier: "free",
+          defaultMeetingProvider: "google_meet",
+          defaultMeetingDurationMin: 30,
+          onboardingComplete: false,
+          hasOpenedHome: false,
+          nekkoRsvpFor: null,
+        })),
+
+      nekkoRsvpFor: null,
+      setNekkoRsvp: (dateIso) => set({ nekkoRsvpFor: dateIso }),
 
       updateProfile: (update) =>
         set((state) => ({ profile: update(state.profile) })),
@@ -617,6 +668,10 @@ export const useAppStore = create<AppState>()(
         onboardingComplete: state.onboardingComplete,
         hasOpenedHome: state.hasOpenedHome,
         presetPersonTags: state.presetPersonTags,
+        planTier: state.planTier,
+        defaultMeetingProvider: state.defaultMeetingProvider,
+        defaultMeetingDurationMin: state.defaultMeetingDurationMin,
+        nekkoRsvpFor: state.nekkoRsvpFor,
       }),
       // output:'export'でもnext buildはクライアントコンポーネントを一度サーバー側で
       // プリレンダーする。その際windowもlocalStorageも存在しないため、自動リハイドレーションを
