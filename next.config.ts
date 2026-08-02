@@ -5,6 +5,7 @@ import type { NextConfig } from "next";
 // （通常のローカル開発・本番ビルドには影響させない）。
 const isGhPages = process.env.DEPLOY_TARGET === "gh-pages";
 const ghPagesRepoName = "enroot-giin-prototype";
+const basePath = isGhPages ? `/${ghPagesRepoName}` : "";
 
 const nextConfig: NextConfig = {
   // 静的エクスポート（SSG）。サーバーランタイムを持たないため、秘密鍵を扱う処理は
@@ -14,9 +15,15 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   ...(isGhPages && {
-    basePath: `/${ghPagesRepoName}`,
-    assetPrefix: `/${ghPagesRepoName}/`,
+    basePath,
+    assetPrefix: `${basePath}/`,
   }),
+  // images.unoptimized:true の場合、next/image は basePath を自動付与しない
+  // （next.jsの既知の仕様。優化サーバーを経由しないため）。lib/basePath.ts の
+  // withBasePath() で手動対応するために、クライアント側からも同じ値を読めるようにする。
+  env: {
+    NEXT_PUBLIC_BASE_PATH: basePath,
+  },
 };
 
 export default nextConfig;

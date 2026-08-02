@@ -6,6 +6,7 @@ import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter } from "@/lib/useSpeakingCharacter";
 import { greeting, quickMenuReply, freeformReply, overdueTodoCheckinMessage } from "@/lib/secretaryService";
 import { useAppStore, useOverdueTodos } from "@/store/appStore";
+import { withBasePath } from "@/lib/basePath";
 import type { ChatMessageModel, TodoModel } from "@/types/models";
 
 const quickMenuItems = ["今日の予定", "ToDo", "名刺管理"];
@@ -121,7 +122,7 @@ export default function SecretaryPage() {
     <div className="flex h-full flex-col">
       <div className="relative h-[38vh] shrink-0">
         <SpeakingCharacter
-          imageSrc="/images/secretary_misaki.png"
+          imageSrc={withBasePath("/images/secretary_misaki.png")}
           isSpeaking={isSpeaking}
           viseme={viseme}
           className="h-full w-full rounded-b-[28px]"

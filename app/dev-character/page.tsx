@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter, type Viseme } from "@/lib/useSpeakingCharacter";
+import { withBasePath } from "@/lib/basePath";
 
 /**
  * Phase 2a単体動作確認用ページ。チャット/バックエンドに一切依存せず、
@@ -17,7 +18,7 @@ export default function DevCharacterPage() {
     <main className="flex min-h-screen flex-col items-center gap-4 p-6">
       <h1 className="text-lg font-bold">Phase 2a: キャラクター単体確認</h1>
       <SpeakingCharacter
-        imageSrc="/images/secretary_misaki.png"
+        imageSrc={withBasePath("/images/secretary_misaki.png")}
         isSpeaking={manualMode ? true : isSpeaking}
         viseme={manualMode ? manualViseme : viseme}
         className="h-80 w-80 rounded-card shadow-card"
