@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Star, Pencil } from "lucide-react";
+import { ArrowLeft, Star, Pencil, Sparkles } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { PostingStatusCard } from "@/components/PostingStatusCard";
 
@@ -16,7 +16,7 @@ export default function PostingPage() {
           <button onClick={() => router.push("/")} aria-label="戻る" className="rounded-full p-2">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-lg font-bold">発信</h1>
+          <h1 className="text-lg font-bold">SNS発信</h1>
         </div>
         <button
           onClick={() => router.push("/posting/benchmark-accounts")}
@@ -49,6 +49,13 @@ export default function PostingPage() {
           )}
         </div>
 
+        <button
+          onClick={() => router.push("/posting/create")}
+          className="mt-2 flex h-tap-target w-full items-center justify-center gap-2 rounded-input bg-gradient-brand-green font-bold text-white"
+        >
+          <Sparkles size={18} />
+          美咲と一緒に作る
+        </button>
         <button
           onClick={() => router.push("/posting/edit")}
           className="mt-2 flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-primary-blue font-semibold text-primary-blue"
