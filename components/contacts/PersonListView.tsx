@@ -6,7 +6,6 @@ import { Briefcase, Mic, Users } from "lucide-react";
 import { useAppStore, useReminderPersons, daysSinceLastContact } from "@/store/appStore";
 import { PersonTile } from "@/components/contacts/PersonTile";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { showNotReady } from "@/lib/notReady";
 
 /** 名刺管理タブ「名刺一覧」サブタブ。goen_view.dart の _buildPersonList 相当。 */
 export function PersonListView() {
@@ -38,7 +37,7 @@ export function PersonListView() {
         </button>
         <button
           className="h-tap-target flex flex-1 items-center justify-center gap-2 rounded-input border border-primary-blue font-semibold text-primary-blue"
-          onClick={() => showNotReady("声で追加")}
+          onClick={() => router.push("/contacts/voice")}
         >
           <Mic size={18} />
           声で追加
