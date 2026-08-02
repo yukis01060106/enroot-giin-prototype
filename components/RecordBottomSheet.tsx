@@ -29,7 +29,7 @@ export function RecordBottomSheet({ open, onOpenChange }: { open: boolean; onOpe
           className="flex h-tap-target items-center justify-center gap-3 rounded-input bg-brand-green text-lg font-bold text-white"
         >
           <Mic size={28} />
-          おしてはなす
+          音声メモ
         </button>
         <button
           onClick={goText}

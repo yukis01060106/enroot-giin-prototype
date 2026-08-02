@@ -46,7 +46,7 @@ function RecordFlowInner() {
     showToast("できました！記録を保存しました。");
   }
 
-  const title = step === "voice" ? "おしてはなす" : step === "text" ? "文字で入力" : "分類を確認";
+  const title = step === "voice" ? "音声メモ" : step === "text" ? "文字で入力" : "分類を確認";
 
   return (
     <div className="flex h-full flex-col">
@@ -106,6 +106,11 @@ function VoiceStep({ onTranscribed }: { onTranscribed: (text: string) => void })
     onTranscribed(transcript);
   }
 
+  function toggle() {
+    if (recording) stop();
+    else start();
+  }
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 p-6">
       {transcribing ? (
@@ -116,20 +121,17 @@ function VoiceStep({ onTranscribed }: { onTranscribed: (text: string) => void })
       ) : (
         <>
           <p className="text-lg text-text-secondary">
-            {recording ? "話してください" : "ボタンを押しながら話してください"}
+            {recording ? "録音中です。もう一度タップすると終了します" : "ボタンをタップして録音を開始してください"}
           </p>
           <button
-            onMouseDown={start}
-            onMouseUp={stop}
-            onTouchStart={start}
-            onTouchEnd={stop}
+            onClick={toggle}
             className={`flex h-32 w-32 items-center justify-center rounded-full transition-transform ${
               recording ? "scale-110 bg-error" : "bg-brand-green"
             }`}
           >
             <Mic size={56} className="text-white" />
           </button>
-          <p className="text-text-secondary">{recording ? `録音中… ${elapsed}秒` : "長押しで録音開始"}</p>
+          <p className="text-text-secondary">{recording ? `録音中… ${elapsed}秒` : "タップで録音開始"}</p>
         </>
       )}
     </div>
