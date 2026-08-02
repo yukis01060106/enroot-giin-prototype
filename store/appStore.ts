@@ -108,6 +108,7 @@ interface AppState {
   meetings: () => ScheduleModel[];
   todaySchedules: () => ScheduleModel[];
   pendingTodos: () => TodoModel[];
+  overdueTodos: () => TodoModel[];
   reminderPersons: () => PersonModel[];
   thisMonthExpenses: () => ExpenseModel[];
   thisMonthExpensesByCategory: () => Record<string, number>;
@@ -230,6 +231,7 @@ function seedData(profile: UserProfileModel) {
   const todos: TodoModel[] = [
     { id: "t1", title: "街灯修繕を道路課に連絡", dueDate: atTime(0, 0), isCompleted: false, priority: "high" },
     { id: "t2", title: "一般質問の原稿作成", dueDate: daysFromNow(5), isCompleted: false, priority: "medium" },
+    { id: "t3", title: "住民相談の対応記録をまとめる", dueDate: daysAgo(2), isCompleted: false, priority: "high" },
   ];
 
   const expenses: ExpenseModel[] = [
@@ -532,6 +534,15 @@ export const useAppStore = create<AppState>()(
           });
       },
 
+      overdueTodos: () => {
+        const state = get();
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        return [...state.todos]
+          .filter((t) => !t.isCompleted && !!t.dueDate && new Date(t.dueDate) < todayStart)
+          .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+      },
+
       reminderPersons: () => {
         const state = get();
         const threshold = state.profile.reminderDays;
@@ -600,6 +611,7 @@ export { daysSinceLastContact };
 export const useMeetings = () => useAppStore(useShallow((s) => s.meetings()));
 export const useTodaySchedules = () => useAppStore(useShallow((s) => s.todaySchedules()));
 export const usePendingTodos = () => useAppStore(useShallow((s) => s.pendingTodos()));
+export const useOverdueTodos = () => useAppStore(useShallow((s) => s.overdueTodos()));
 export const useReminderPersons = () => useAppStore(useShallow((s) => s.reminderPersons()));
 export const useThisMonthExpenses = () => useAppStore(useShallow((s) => s.thisMonthExpenses()));
 export const useThisMonthExpensesByCategory = () =>

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Mic, Volume2, VolumeX } from "lucide-react";
+import { Send, Mic, Volume2, VolumeX, Check, X } from "lucide-react";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter } from "@/lib/useSpeakingCharacter";
-import { greeting, quickMenuReply, freeformReply } from "@/lib/secretaryService";
-import type { ChatMessageModel } from "@/types/models";
+import { greeting, quickMenuReply, freeformReply, overdueTodoCheckinMessage } from "@/lib/secretaryService";
+import { useAppStore, useOverdueTodos } from "@/store/appStore";
+import type { ChatMessageModel, TodoModel } from "@/types/models";
 import { showNotReady } from "@/lib/notReady";
 
 const quickMenuItems = ["今日の予定", "ToDo", "名刺管理"];
@@ -21,9 +22,12 @@ export default function SecretaryPage() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [checkinSent, setCheckinSent] = useState(false);
   const greeted = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isSpeaking, viseme, speak } = useSpeakingCharacter();
+  const toggleTodo = useAppStore((s) => s.toggleTodo);
+  const overdueTodos = useOverdueTodos();
 
   useEffect(() => {
     if (greeted.current) return;
@@ -31,6 +35,17 @@ export default function SecretaryPage() {
     const text = greeting();
     setMessages([{ role: "assistant", content: text, createdAt: new Date().toISOString() }]);
     if (voiceEnabled) speak(text);
+
+    // 期限切れのToDoがあれば、こちらから聞かれる前に美咲から確認してもらう。
+    const overdue = useAppStore.getState().overdueTodos();
+    if (overdue.length > 0) {
+      window.setTimeout(() => {
+        const checkinText = overdueTodoCheckinMessage(overdue);
+        setMessages((prev) => [...prev, { role: "assistant", content: checkinText, createdAt: new Date().toISOString() }]);
+        if (voiceEnabled) speak(checkinText);
+        setCheckinSent(true);
+      }, 1000);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -53,6 +68,23 @@ export default function SecretaryPage() {
     const result = await freeformReply(trimmed, history);
     setIsTyping(false);
     pushAssistant(result.reply);
+  }
+
+  function respondToCheckin(todo: TodoModel, done: boolean) {
+    if (done) {
+      toggleTodo(todo.id);
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: `「${todo.title}」は完了しました`, createdAt: new Date().toISOString() },
+      ]);
+      pushAssistant("ありがとうございます、完了にしておきますね！");
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: `「${todo.title}」はまだです`, createdAt: new Date().toISOString() },
+      ]);
+      pushAssistant("承知しました。無理のない範囲で、引き続きよろしくお願いします。");
+    }
   }
 
   async function sendQuickMenu(menu: string) {
@@ -109,6 +141,37 @@ export default function SecretaryPage() {
               <div className="rounded-card bg-white px-4 py-3 text-sm text-text-secondary shadow-card">
                 ・・・
               </div>
+            </div>
+          )}
+
+          {checkinSent && overdueTodos.length > 0 && (
+            <div className="flex flex-col gap-2 pt-1">
+              {overdueTodos.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between gap-2 rounded-card border border-warning/40 bg-white p-3 text-sm shadow-card"
+                >
+                  <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      onClick={() => respondToCheckin(t, true)}
+                      aria-label="完了しました"
+                      className="flex items-center gap-1 rounded-chip bg-brand-green px-3 py-1.5 font-semibold text-white"
+                    >
+                      <Check size={16} />
+                      完了
+                    </button>
+                    <button
+                      onClick={() => respondToCheckin(t, false)}
+                      aria-label="まだです"
+                      className="flex items-center gap-1 rounded-chip border border-neutral-gray px-3 py-1.5 font-semibold text-text-secondary"
+                    >
+                      <X size={16} />
+                      まだ
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

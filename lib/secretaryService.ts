@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAppStore } from "@/store/appStore";
 import { fullNameWithHonorific } from "@/types/models";
-import type { ChatMessageModel } from "@/types/models";
+import type { ChatMessageModel, TodoModel } from "@/types/models";
 
 /** Flutter版 secretary_mock_service.dart の1:1移植。 */
 
@@ -25,6 +25,16 @@ export function greeting(): string {
     `おはようございます、${name}。今日は${parts.join("、")}入っていますよ。\n` +
     "今日も一日、よろしくお願いします。"
   );
+}
+
+/** 期限切れのToDoについて、美咲から自発的に確認する一言。record_flow等と違い、ここは相手（先生）から
+ * の入力を待たず、チャット画面を開いた時点で美咲側から話しかける想定。 */
+export function overdueTodoCheckinMessage(todos: TodoModel[]): string {
+  if (todos.length === 1) {
+    return `先生、「${todos[0].title}」はこちら、完了してますでしょうか？まだでしたら教えてくださいね。`;
+  }
+  const lines = todos.map((t) => `・${t.title}`).join("\n");
+  return `先生、期限を過ぎているタスクがいくつかあります。もう終わっているものはありますか？\n${lines}`;
 }
 
 export function quickMenuReply(menu: string): string {
