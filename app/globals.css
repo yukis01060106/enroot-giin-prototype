@@ -1,26 +1,96 @@
 @import "tailwindcss";
 
+/*
+ * デザイントークン。Flutter版 lib/config/theme.dart / lib/config/constants.dart から
+ * 1:1で移植。値を変える場合はFlutter版と揃えること（どちらかが真実の源になるまでの
+ * 移行期間中は、両方のプラットフォームで見た目を一致させる）。
+ *
+ * 生の値は --raw-* に置き、@theme ではそれをエイリアスする（@theme inline で
+ * 自分自身と同じ名前を参照すると循環参照になり解決不能になるため、名前を分ける）。
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --raw-primary-blue: #1565c0;
+  --raw-primary-blue-light: #1e88e5;
+  --raw-brand-green: #2e7d32;
+  --raw-light-green: #66bb6a;
+  --raw-neutral-gray: #f5f5f5;
+  --raw-text-primary: #212121;
+  --raw-text-secondary: #757575;
+  --raw-error: #d32f2f;
+  --raw-warning: #f57c00;
+  --raw-scaffold-bg: #edeff3;
+  --raw-accent-amber: #c77700;
+  --raw-accent-teal: #00897b;
+  --raw-accent-indigo: #5e35b1;
+  --raw-accent-rose: #c2185b;
+  --raw-accent-crimson: #d84315;
+
+  --raw-radius-card: 16px;
+  --raw-radius-chip: 20px;
+  --raw-radius-input: 12px;
+  --raw-radius-sheet: 24px;
+
+  /* サイズ（シニア配慮のタップターゲット） */
+  --raw-min-tap-target: 60px;
+  --raw-button-size: 72px;
+  --raw-max-content-width: 480px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary-blue: var(--raw-primary-blue);
+  --color-primary-blue-light: var(--raw-primary-blue-light);
+  --color-brand-green: var(--raw-brand-green);
+  --color-light-green: var(--raw-light-green);
+  --color-neutral-gray: var(--raw-neutral-gray);
+  --color-text-primary: var(--raw-text-primary);
+  --color-text-secondary: var(--raw-text-secondary);
+  --color-error: var(--raw-error);
+  --color-warning: var(--raw-warning);
+  --color-scaffold-bg: var(--raw-scaffold-bg);
+  --color-accent-amber: var(--raw-accent-amber);
+  --color-accent-teal: var(--raw-accent-teal);
+  --color-accent-indigo: var(--raw-accent-indigo);
+  --color-accent-rose: var(--raw-accent-rose);
+  --color-accent-crimson: var(--raw-accent-crimson);
+
+  --radius-card: var(--raw-radius-card);
+  --radius-chip: var(--raw-radius-chip);
+  --radius-input: var(--raw-radius-input);
+  --radius-sheet: var(--raw-radius-sheet);
+
+  --spacing-tap-target: var(--raw-min-tap-target);
+  --spacing-button: var(--raw-button-size);
+
+  --font-sans: var(--font-noto-sans-jp);
+
+  /*
+   * カードの淡い影。背景(#EDEFF3)とカード(白)の明度差が小さいため、
+   * 影がないとカードが背景に埋もれて見える（Flutter版で踏んだ問題を再発させない）。
+   */
+  --shadow-card: 0 6px 20px rgba(21, 101, 192, 0.12), 0 1px 4px rgba(0, 0, 0, 0.078);
+  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.133);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Tailwindのbg-gradient-to-brユーティリティで代替できないブランド固有グラデーション */
+@utility bg-gradient-primary {
+  background-image: linear-gradient(
+    135deg,
+    var(--raw-primary-blue-light),
+    var(--raw-primary-blue)
+  );
+}
+
+@utility bg-gradient-brand-green {
+  background-image: linear-gradient(135deg, var(--raw-light-green), var(--raw-brand-green));
+}
+
+/*
+ * @layer base に入れることで、Tailwindのユーティリティクラス（bg-primary-blue等）が
+ * 優先されるようにする。レイヤー外の生CSSは詳細度に関係なく常にレイヤー内のCSSより
+ * 優先されてしまうため、bodyへの背景色指定をclassName側（bg-primary-blue）と衝突させない。
+ */
+@layer base {
+  body {
+    line-height: 1.5;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
