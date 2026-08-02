@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Mic, Volume2, VolumeX, Check, X } from "lucide-react";
+import { Send, Mic, Volume2, VolumeX, Check, X, Loader2 } from "lucide-react";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter } from "@/lib/useSpeakingCharacter";
 import { greeting, quickMenuReply, freeformReply, overdueTodoCheckinMessage } from "@/lib/secretaryService";
 import { useAppStore, useOverdueTodos } from "@/store/appStore";
 import type { ChatMessageModel, TodoModel } from "@/types/models";
-import { showNotReady } from "@/lib/notReady";
 
 const quickMenuItems = ["今日の予定", "ToDo", "名刺管理"];
 const secretaryName = "藤堂 美咲";
+const mockChatTranscripts = [
+  "今日の予定を教えて",
+  "田中さんに連絡するのを忘れないようにしたい",
+  "一般質問の準備について相談したい",
+];
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -23,6 +27,8 @@ export default function SecretaryPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [checkinSent, setCheckinSent] = useState(false);
+  const [voiceRecording, setVoiceRecording] = useState(false);
+  const [voiceTranscribing, setVoiceTranscribing] = useState(false);
   const greeted = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isSpeaking, viseme, speak } = useSpeakingCharacter();
@@ -85,6 +91,21 @@ export default function SecretaryPage() {
       ]);
       pushAssistant("承知しました。無理のない範囲で、引き続きよろしくお願いします。");
     }
+  }
+
+  async function toggleVoiceInput() {
+    if (voiceTranscribing) return;
+    if (!voiceRecording) {
+      setVoiceRecording(true);
+      return;
+    }
+    setVoiceRecording(false);
+    setVoiceTranscribing(true);
+    // 実際には音声認識APIの結果をここで受け取る。今は録音内容に関わらずモックの文言を返す。
+    await new Promise((r) => setTimeout(r, 1200));
+    const mock = mockChatTranscripts[Math.floor(Math.random() * mockChatTranscripts.length)];
+    setInput(mock);
+    setVoiceTranscribing(false);
   }
 
   async function sendQuickMenu(menu: string) {
@@ -198,17 +219,23 @@ export default function SecretaryPage() {
       >
         <button
           type="button"
-          aria-label="音声入力"
-          onClick={() => showNotReady("音声入力")}
-          className="flex h-tap-target w-10 shrink-0 items-center justify-center text-brand-green"
+          aria-label={voiceRecording ? "録音を停止" : "音声入力"}
+          onClick={toggleVoiceInput}
+          disabled={voiceTranscribing}
+          className={`flex h-tap-target w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+            voiceRecording ? "bg-error text-white" : "text-brand-green"
+          }`}
         >
-          <Mic size={22} />
+          {voiceTranscribing ? <Loader2 size={20} className="animate-spin" /> : <Mic size={22} />}
         </button>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="メッセージを入力"
-          className="h-tap-target flex-1 rounded-input bg-neutral-gray px-4 text-base outline-none focus:ring-2 focus:ring-brand-green"
+          disabled={voiceRecording || voiceTranscribing}
+          placeholder={
+            voiceRecording ? "話してください…（もう一度マイクをタップで終了）" : voiceTranscribing ? "文字に変換しています…" : "メッセージを入力"
+          }
+          className="h-tap-target flex-1 rounded-input bg-neutral-gray px-4 text-base outline-none focus:ring-2 focus:ring-brand-green disabled:opacity-60"
         />
         <button
           type="submit"

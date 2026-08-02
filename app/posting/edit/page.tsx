@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { ArrowLeft, Image as ImageIcon, Share2, MessageCircle, Eye, ShieldAlert, Loader2 } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ArrowLeft, Image as ImageIcon, Share2, MessageCircle, Eye, ShieldAlert, Loader2, X } from "lucide-react";
 import { SuspenseBoundary } from "@/components/SuspenseBoundary";
 import { useAppStore } from "@/store/appStore";
 import { suggestHashtags, assessRisk, riskLabels, type RiskLevel } from "@/lib/postingAiService";
-import { showNotReady, showToast } from "@/lib/notReady";
+import { showToast } from "@/lib/notReady";
 
 const riskColor: Record<RiskLevel, string> = {
   low: "border-brand-green text-brand-green",
@@ -22,6 +22,8 @@ function PostEditInner() {
   const publishPost = useAppStore((s) => s.publishPost);
 
   const [content, setContent] = useState(draft?.content ?? "");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [toFacebook, setToFacebook] = useState(true);
   const [toLine, setToLine] = useState(false);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
@@ -38,6 +40,18 @@ function PostEditInner() {
     const tags = [...selectedTags].join(" ");
     return tags ? `${content.trim()}\n\n${tags}` : content.trim();
   }, [content, selectedTags]);
+
+  async function onPhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+    setPhotoUrl(dataUrl);
+    e.target.value = "";
+  }
 
   async function publish() {
     if (!canSubmit) return;
@@ -69,13 +83,35 @@ function PostEditInner() {
           autoFocus={!draft}
           className="w-full rounded-input border border-neutral-gray bg-white p-3 outline-none focus:ring-2 focus:ring-brand-green"
         />
-        <button
-          onClick={() => showNotReady("写真添付")}
-          className="mt-3 flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-neutral-gray font-semibold"
-        >
-          <ImageIcon size={18} />
-          写真を添付
-        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onPhotoSelected}
+          className="hidden"
+        />
+        {photoUrl ? (
+          <div className="relative mt-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={photoUrl} alt="" className="h-40 w-full rounded-input object-cover" />
+            <button
+              onClick={() => setPhotoUrl(null)}
+              aria-label="写真を削除"
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="mt-3 flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-neutral-gray font-semibold"
+          >
+            <ImageIcon size={18} />
+            写真を添付
+          </button>
+        )}
 
         <h2 className="mb-2 mt-4 font-bold">おすすめハッシュタグ</h2>
         <div className="flex flex-wrap gap-2">
@@ -160,6 +196,7 @@ function PostEditInner() {
       {showPreview && (
         <PostPreviewOverlay
           content={finalContent}
+          photoUrl={photoUrl}
           toFacebook={toFacebook}
           toLine={toLine}
           onClose={() => setShowPreview(false)}
@@ -171,11 +208,13 @@ function PostEditInner() {
 
 function PostPreviewOverlay({
   content,
+  photoUrl,
   toFacebook,
   toLine,
   onClose,
 }: {
   content: string;
+  photoUrl: string | null;
   toFacebook: boolean;
   toLine: boolean;
   onClose: () => void;
@@ -190,10 +229,12 @@ function PostPreviewOverlay({
         <h1 className="text-lg font-bold">投稿イメージ</h1>
       </header>
       <div className="flex-1 overflow-y-auto p-4">
-        {toFacebook && <SocialCard icon={Share2} iconColor="bg-primary-blue" label="Facebook" content={content} authorName={authorName} />}
+        {toFacebook && (
+          <SocialCard icon={Share2} iconColor="bg-primary-blue" label="Facebook" content={content} authorName={authorName} photoUrl={photoUrl} />
+        )}
         {toLine && (
           <div className="mt-6">
-            <SocialCard icon={MessageCircle} iconColor="bg-brand-green" label="LINE公式" content={content} authorName={authorName} />
+            <SocialCard icon={MessageCircle} iconColor="bg-brand-green" label="LINE公式" content={content} authorName={authorName} photoUrl={photoUrl} />
           </div>
         )}
         <p className="mt-4 text-xs text-text-secondary">
@@ -210,12 +251,14 @@ function SocialCard({
   label,
   content,
   authorName,
+  photoUrl,
 }: {
   icon: typeof Share2;
   iconColor: string;
   label: string;
   content: string;
   authorName: string;
+  photoUrl: string | null;
 }) {
   return (
     <div>
@@ -231,9 +274,14 @@ function SocialCard({
           </div>
         </div>
         <p className="whitespace-pre-wrap px-3">{content || "（本文なし）"}</p>
-        <div className="m-3 flex h-36 items-center justify-center rounded bg-neutral-gray">
-          <ImageIcon size={40} className="text-text-secondary" />
-        </div>
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl} alt="" className="m-3 h-36 w-[calc(100%-1.5rem)] rounded object-cover" />
+        ) : (
+          <div className="m-3 flex h-36 items-center justify-center rounded bg-neutral-gray">
+            <ImageIcon size={40} className="text-text-secondary" />
+          </div>
+        )}
         <hr className="border-neutral-gray" />
         <div className="flex justify-around p-2 text-text-secondary">
           <span>いいね</span>
