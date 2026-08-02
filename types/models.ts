@@ -54,6 +54,8 @@ export interface ExpenseModel {
   store?: string;
   note?: string;
   date: string;
+  /** 領収書の写真（data URL）。カメラ/ファイル選択で実際に撮った画像を保持する。 */
+  photoUrl?: string;
 }
 
 export type ConsultationStatus = "none" | "in_progress" | "waiting" | "done";

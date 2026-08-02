@@ -27,9 +27,9 @@ const featureCards = [
   { icon: Calendar, label: "カレンダー", color: "text-accent-crimson", bg: "bg-accent-crimson/12", href: "/calendar" },
   { icon: SquarePen, label: "メモ", color: "text-primary-blue", bg: "bg-primary-blue/12", href: null },
   { icon: IdCard, label: "名刺管理", color: "text-brand-green", bg: "bg-brand-green/12", href: "/contacts" },
-  { icon: Megaphone, label: "発信", color: "text-accent-rose", bg: "bg-accent-rose/12", href: "/posting" },
+  { icon: Megaphone, label: "SNS発信", color: "text-accent-rose", bg: "bg-accent-rose/12", href: "/posting" },
   { icon: Receipt, label: "経費", color: "text-accent-amber", bg: "bg-accent-amber/12", href: "/expense" },
-  { icon: Trees, label: "コミュニティ", color: "text-accent-teal", bg: "bg-accent-teal/12", href: "/contacts?tab=community" },
+  { icon: Trees, label: "コミュニティ", color: "text-accent-teal", bg: "bg-accent-teal/12", href: "/community" },
   { icon: Video, label: "オンライン会議", color: "text-accent-indigo", bg: "bg-accent-indigo/12", href: "/meetings" },
 ] as const;
 

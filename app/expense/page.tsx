@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Camera, FileDown, Receipt } from "lucide-react";
-import { useThisMonthExpenses, useThisMonthExpensesByCategory, useThisMonthExpenseTotal, monthlyExpenseBudget } from "@/store/appStore";
+import { ArrowLeft, Camera, FileDown, Receipt, ChevronLeft, ChevronRight } from "lucide-react";
+import { useAppStore, monthlyExpenseBudget } from "@/store/appStore";
 import { formatYen } from "@/lib/currencyFormat";
 import { formatMD } from "@/lib/formatDate";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -12,18 +12,52 @@ import { showNotReady } from "@/lib/notReady";
 
 export default function ExpensePage() {
   const router = useRouter();
-  const total = useThisMonthExpenseTotal();
-  const byCategory = useThisMonthExpensesByCategory();
-  const allExpenses = useThisMonthExpenses();
+  const expenses = useAppStore((s) => s.expenses);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [period, setPeriod] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+
+  const isCurrentMonth = useMemo(() => {
+    const now = new Date();
+    return period.year === now.getFullYear() && period.month === now.getMonth();
+  }, [period]);
+
+  const periodExpenses = useMemo(
+    () =>
+      expenses
+        .filter((e) => {
+          const d = new Date(e.date);
+          return d.getFullYear() === period.year && d.getMonth() === period.month;
+        })
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [expenses, period]
+  );
+
+  const byCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of periodExpenses) map[e.category] = (map[e.category] ?? 0) + e.amount;
+    return map;
+  }, [periodExpenses]);
+
+  const total = periodExpenses.reduce((sum, e) => sum + e.amount, 0);
   const remaining = monthlyExpenseBudget - total;
   const progress = Math.min(Math.max(total / monthlyExpenseBudget, 0), 1);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const categories = Object.keys(byCategory);
 
   const filtered = useMemo(
-    () => (activeCategory ? allExpenses.filter((e) => e.category === activeCategory) : allExpenses),
-    [allExpenses, activeCategory]
+    () => (activeCategory ? periodExpenses.filter((e) => e.category === activeCategory) : periodExpenses),
+    [periodExpenses, activeCategory]
   );
-  const categories = Object.keys(byCategory);
+
+  function changeMonth(delta: number) {
+    setActiveCategory(null);
+    setPeriod((prev) => {
+      const d = new Date(prev.year, prev.month + delta, 1);
+      return { year: d.getFullYear(), month: d.getMonth() };
+    });
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -35,8 +69,20 @@ export default function ExpensePage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <div className="rounded-card bg-white p-4 shadow-card">
-          <p className="text-lg font-bold">今月のサマリー</p>
+        <div className="flex items-center justify-between rounded-card bg-white px-2 py-1.5 shadow-card">
+          <button onClick={() => changeMonth(-1)} aria-label="前の月" className="p-2 text-text-secondary">
+            <ChevronLeft size={20} />
+          </button>
+          <span className="font-bold">
+            {period.year}年{period.month + 1}月{isCurrentMonth && "（今月）"}
+          </span>
+          <button onClick={() => changeMonth(1)} aria-label="次の月" className="p-2 text-text-secondary">
+            <ChevronRight size={20} />
+          </button>
+        </div>
+
+        <div className="mt-3 rounded-card bg-white p-4 shadow-card">
+          <p className="text-lg font-bold">サマリー</p>
           <p className="mt-3">
             使用額 {formatYen(total)} ／ 上限 {formatYen(monthlyExpenseBudget)}
           </p>
@@ -103,11 +149,15 @@ export default function ExpensePage() {
         )}
 
         {filtered.length === 0 ? (
-          <EmptyState icon={Receipt} message="今月の経費はまだありません" actionHint="上の「レシートを撮影」から記録してみましょう" />
+          <EmptyState icon={Receipt} message="この月の経費はまだありません" actionHint="上の「レシートを撮影」から記録してみましょう" />
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map((e) => (
               <div key={e.id} className="flex items-center gap-3 rounded-card bg-white p-3 shadow-card">
+                {e.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={e.photoUrl} alt="" className="h-12 w-12 shrink-0 rounded-input object-cover" />
+                )}
                 <div className="min-w-0 flex-1">
                   <p>{e.store ?? e.category}</p>
                   <p className="text-sm text-text-secondary">

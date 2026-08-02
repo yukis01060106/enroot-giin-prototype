@@ -7,11 +7,10 @@ import { useAppStore } from "@/store/appStore";
 import { Dialog } from "@/components/ui/Dialog";
 import { formatYMD } from "@/lib/formatDate";
 
-const presetTags = ["町内会", "PTA", "商工会", "後援会", "支援者", "議員", "行政"];
-
 export function PersonDetail({ personId }: { personId: string }) {
   const router = useRouter();
   const person = useAppStore((s) => s.persons.find((p) => p.id === personId));
+  const presetTags = useAppStore((s) => s.presetPersonTags);
   // .filter()を直接セレクタで呼ぶと毎回新しい配列参照が返り無限レンダーになる
   // （Phase 0で踏んだのと同じ罠）ため、生の配列を選んでuseMemoでフィルタする。
   const allRecords = useAppStore((s) => s.records);

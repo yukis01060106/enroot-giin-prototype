@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Camera, Loader2, Receipt } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { expenseCategories } from "@/types/models";
@@ -17,20 +17,35 @@ const mockReceipts = [
  * レシート撮影→確認の2画面をひとつのページのローカルstepで表現する
  * （Flutter版は別ルートへのpushReplacementだが、値の受け渡しが単純な
  * ローカルstateで足りるためNext.js版では1ページにまとめた）。
+ *
+ * 文字の読み取り（費目・金額・店名の自動入力）はGoogle Cloud Vision未接続の
+ * モックだが、写真そのものは<input type="file" capture>で実際に撮影/選択した
+ * ものをdata URLとして保存する（読み取りだけがモック、撮影・保存自体は本物）。
  */
 export default function ReceiptScanPage() {
   const router = useRouter();
   const addExpense = useAppStore((s) => s.addExpense);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<typeof mockReceipts[number] | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [store, setStore] = useState("");
   const [note, setNote] = useState("");
 
-  async function startScan() {
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+    setPhotoUrl(dataUrl);
+
     setScanning(true);
-    // 実際にはここでカメラ撮影 → Google Cloud Vision APIを呼び出す。
+    // 実際の画像はもう保存済み。文字の読み取り（費目・金額・店名）だけモック。
     await new Promise((r) => setTimeout(r, 1400));
     const mock = mockReceipts[Math.floor(Math.random() * mockReceipts.length)];
     setResult(mock);
@@ -43,7 +58,13 @@ export default function ReceiptScanPage() {
   function save() {
     const amountNum = parseInt(amount, 10);
     if (!amountNum || amountNum <= 0) return;
-    addExpense({ category, amount: amountNum, store: store.trim() || undefined, note: note.trim() || undefined });
+    addExpense({
+      category,
+      amount: amountNum,
+      store: store.trim() || undefined,
+      note: note.trim() || undefined,
+      photoUrl: photoUrl ?? undefined,
+    });
     router.push("/expense");
     showToast("経費を保存しました");
   }
@@ -60,6 +81,14 @@ export default function ReceiptScanPage() {
       <div className="flex-1 overflow-y-auto p-6">
         {!result ? (
           <div className="flex h-full flex-col items-center justify-center gap-8">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onFileSelected}
+              className="hidden"
+            />
             {scanning ? (
               <>
                 <Loader2 size={36} className="animate-spin text-brand-green" />
@@ -67,11 +96,11 @@ export default function ReceiptScanPage() {
               </>
             ) : (
               <>
-                <div className="flex h-40 w-40 items-center justify-center rounded-card border border-text-secondary bg-neutral-gray">
+                <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-card border border-text-secondary bg-neutral-gray">
                   <Receipt size={72} className="text-text-secondary" />
                 </div>
                 <button
-                  onClick={startScan}
+                  onClick={() => fileInputRef.current?.click()}
                   className="flex h-tap-target w-60 items-center justify-center gap-2 rounded-input bg-brand-green font-bold text-white"
                 >
                   <Camera size={20} />
@@ -82,6 +111,10 @@ export default function ReceiptScanPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
+            {photoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photoUrl} alt="レシート" className="h-40 w-full rounded-card object-cover shadow-card" />
+            )}
             <div>
               <label className="mb-1 block font-semibold">費目</label>
               <select

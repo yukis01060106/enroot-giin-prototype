@@ -174,6 +174,12 @@ export default function SettingsPage() {
               </select>
             }
           />
+          <SettingsRow
+            title="タグ候補の管理"
+            subtitle="タグ編集時の候補一覧を追加・削除できます"
+            trailing={<ChevronRight size={20} className="text-text-secondary" />}
+            onClick={() => router.push("/settings/tags")}
+          />
         </SettingsSection>
 
         <SettingsSection title="カレンダー連携">

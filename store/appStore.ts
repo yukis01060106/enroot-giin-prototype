@@ -34,6 +34,11 @@ interface AppState {
   profile: UserProfileModel;
   gikaiTemplates: GikaiTemplateModel[];
 
+  /** 名刺管理のタグ候補。設定画面（/settings/tags）から追加・削除できる。 */
+  presetPersonTags: string[];
+  addPresetPersonTag: (tag: string) => void;
+  removePresetPersonTag: (tag: string) => void;
+
   /**
    * Flutter版 main.dart が SharedPreferences から同期読みしていた2つのフラグ。
    * output:'export' はミドルウェア/サーバー側リダイレクトが使えないため、
@@ -80,14 +85,24 @@ interface AppState {
   removeGikaiTemplate: (id: string) => void;
   updateConsultationStatus: (recordId: string, status: RecordModel["consultationStatus"]) => void;
   updatePersonTags: (personId: string, tags: string[]) => void;
+  addPerson: (params: {
+    name: string;
+    organization?: string;
+    title?: string;
+    phone?: string;
+    email?: string;
+    memo?: string;
+  }) => PersonModel;
   addExpense: (params: {
     category: string;
     amount: number;
     store?: string;
     note?: string;
     date?: string;
+    photoUrl?: string;
   }) => void;
   publishPost: (params: { toFacebook: boolean; toLine: boolean; draftId?: string }) => void;
+  addPostDraft: (params: { content: string; sourceSummary?: string }) => PostDraftModel;
 
   // 派生ゲッター（Dartのgetterと同じくFlutter版は毎回計算、メモ化はしない）
   meetings: () => ScheduleModel[];
@@ -298,6 +313,16 @@ export const useAppStore = create<AppState>()(
       completeOnboarding: () => set({ onboardingComplete: true }),
       markHomeOpened: () => set({ hasOpenedHome: true }),
 
+      presetPersonTags: ["町内会", "PTA", "商工会", "後援会", "支援者", "議員", "行政"],
+      addPresetPersonTag: (tag) =>
+        set((state) =>
+          state.presetPersonTags.includes(tag)
+            ? state
+            : { presetPersonTags: [...state.presetPersonTags, tag] }
+        ),
+      removePresetPersonTag: (tag) =>
+        set((state) => ({ presetPersonTags: state.presetPersonTags.filter((t) => t !== tag) })),
+
       updateProfile: (update) =>
         set((state) => ({ profile: update(state.profile) })),
 
@@ -422,7 +447,23 @@ export const useAppStore = create<AppState>()(
           persons: state.persons.map((p) => (p.id === personId ? { ...p, tags } : p)),
         })),
 
-      addExpense: ({ category, amount, store, note, date }) =>
+      addPerson: ({ name, organization, title, phone, email, memo }) => {
+        const person: PersonModel = {
+          id: `p_${Date.now()}`,
+          name,
+          organization,
+          title,
+          phone,
+          email,
+          memo,
+          tags: [],
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ persons: [person, ...state.persons] }));
+        return person;
+      },
+
+      addExpense: ({ category, amount, store, note, date, photoUrl }) =>
         set((state) => ({
           expenses: [
             {
@@ -432,10 +473,22 @@ export const useAppStore = create<AppState>()(
               store,
               note,
               date: date ?? new Date().toISOString(),
+              photoUrl,
             },
             ...state.expenses,
           ],
         })),
+
+      addPostDraft: ({ content, sourceSummary }) => {
+        const draft: PostDraftModel = {
+          id: `pd_${Date.now()}`,
+          content,
+          sourceSummary,
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ postDrafts: [draft, ...state.postDrafts] }));
+        return draft;
+      },
 
       publishPost: ({ toFacebook, toLine, draftId }) =>
         set((state) => ({
@@ -514,13 +567,15 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "enroot-app-storage",
-      // profile / onboardingComplete / hasOpenedHome のみ永続化。それ以外は毎回
-      // seedDataで再生成される（Flutter版がSharedPreferencesにこの3つしか
-      // 保存しないのと同じ仕様）。
+      // profile / onboardingComplete / hasOpenedHome / presetPersonTags のみ永続化。
+      // それ以外は毎回seedDataで再生成される（Flutter版がSharedPreferencesに
+      // profile等しか保存しないのと同じ仕様。presetPersonTagsはNext.js版で
+      // 新たに設定可能にした項目なのでこちらも永続化対象に加える）。
       partialize: (state) => ({
         profile: state.profile,
         onboardingComplete: state.onboardingComplete,
         hasOpenedHome: state.hasOpenedHome,
+        presetPersonTags: state.presetPersonTags,
       }),
       // output:'export'でもnext buildはクライアントコンポーネントを一度サーバー側で
       // プリレンダーする。その際windowもlocalStorageも存在しないため、自動リハイドレーションを
