@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ChevronRight, PenLine, FileText, ClipboardList, Headset, FolderArchive } from "lucide-react";
-import { showNotReady } from "@/lib/notReady";
 
 const upcomingCategories = [
   "委員会関連（議案審査・委員長報告 等）",
@@ -40,18 +39,6 @@ function LiveCard({
   );
 }
 
-function DisabledRow({ label, feature }: { label: string; feature: string }) {
-  return (
-    <button
-      onClick={() => showNotReady(feature)}
-      className="flex w-full items-center justify-between rounded-card bg-white px-4 py-3.5 text-text-secondary shadow-card"
-    >
-      {label}
-      <ChevronRight size={20} />
-    </button>
-  );
-}
-
 export default function CouncilPrepPage() {
   return (
     <div className="flex h-full flex-col">
@@ -68,7 +55,6 @@ export default function CouncilPrepPage() {
             subtitle="美咲と一緒に、テーマ設定から通告書まで6ステップで作成"
             href="/council-prep/general-question"
           />
-          <DisabledRow label="質問通告書の作成" feature="質問通告書の作成" />
         </div>
 
         <h2 className="mb-2 mt-6 text-lg font-bold">報告する</h2>

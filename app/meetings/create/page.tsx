@@ -15,12 +15,14 @@ function toDateInputValue(d: Date): string {
 export default function CreateMeetingPage() {
   const router = useRouter();
   const addMeeting = useAppStore((s) => s.addMeeting);
+  const defaultMeetingProvider = useAppStore((s) => s.defaultMeetingProvider);
+  const defaultMeetingDurationMin = useAppStore((s) => s.defaultMeetingDurationMin);
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(() => toDateInputValue(new Date(Date.now() + 86400000)));
   const [time, setTime] = useState("14:00");
-  const [durationMinutes, setDurationMinutes] = useState(60);
-  const [provider, setProvider] = useState<"google_meet" | "zoom">("google_meet");
+  const [durationMinutes, setDurationMinutes] = useState(defaultMeetingDurationMin);
+  const [provider, setProvider] = useState<"google_meet" | "zoom">(defaultMeetingProvider);
   const [memo, setMemo] = useState("");
 
   const canCreate = title.trim() !== "";

@@ -3,10 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Link2, ChevronRight, Video, PlusCircle, Settings } from "lucide-react";
-import { useMeetings } from "@/store/appStore";
+import { useMeetings, useAppStore } from "@/store/appStore";
 import { InstantMeetingSheet } from "@/components/meetings/InstantMeetingSheet";
+import { MeetingSettingsDialog } from "@/components/meetings/MeetingSettingsDialog";
 import { formatHM, formatMDWeekdayTime } from "@/lib/formatDate";
-import { showNotReady } from "@/lib/notReady";
 import type { ScheduleModel } from "@/types/models";
 
 function isToday(d: Date): boolean {
@@ -33,8 +33,8 @@ function MeetingCard({ meeting, showJoin, isPast = false }: { meeting: ScheduleM
       <p className="text-text-secondary">{label}</p>
       {showJoin && (
         <button
-          onClick={() => showNotReady("Google Meet/Zoomとの連携")}
-          disabled={!joinActive}
+          onClick={() => window.open(meeting.meetingUrl, "_blank", "noopener,noreferrer")}
+          disabled={!joinActive || !meeting.meetingUrl}
           className={`mt-3 h-tap-target w-full rounded-input font-bold ${
             joinActive ? "bg-brand-green text-white" : "bg-neutral-gray text-text-secondary"
           }`}
@@ -50,6 +50,10 @@ export default function MeetingsPage() {
   const router = useRouter();
   const meetings = useMeetings();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const defaultMeetingProvider = useAppStore((s) => s.defaultMeetingProvider);
+  const defaultMeetingDurationMin = useAppStore((s) => s.defaultMeetingDurationMin);
+  const updateMeetingDefaults = useAppStore((s) => s.updateMeetingDefaults);
 
   const { today, upcoming, past } = useMemo(() => {
     const now = new Date();
@@ -80,7 +84,7 @@ export default function MeetingsPage() {
           </button>
           <h1 className="text-lg font-bold">オンライン会議</h1>
         </div>
-        <button onClick={() => showNotReady("会議設定")} aria-label="設定" className="rounded-full p-2">
+        <button onClick={() => setSettingsOpen(true)} aria-label="設定" className="rounded-full p-2">
           <Settings size={20} />
         </button>
       </header>
@@ -136,6 +140,13 @@ export default function MeetingsPage() {
       </div>
 
       <InstantMeetingSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+      <MeetingSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        provider={defaultMeetingProvider}
+        durationMin={defaultMeetingDurationMin}
+        onSave={updateMeetingDefaults}
+      />
     </div>
   );
 }
