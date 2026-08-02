@@ -16,6 +16,7 @@ import {
   Circle,
   Clock,
   FileText,
+  ListTodo,
 } from "lucide-react";
 import { SecretaryAvatar } from "@/components/SecretaryAvatar";
 import { greeting as buildGreeting } from "@/lib/secretaryService";
@@ -25,6 +26,7 @@ import { showNotReady } from "@/lib/notReady";
 
 const featureCards = [
   { icon: Calendar, label: "カレンダー", color: "text-accent-crimson", bg: "bg-accent-crimson/12", href: "/calendar" },
+  { icon: ListTodo, label: "ToDo", color: "text-accent-cyan", bg: "bg-accent-cyan/12", href: "/todo" },
   { icon: SquarePen, label: "メモ", color: "text-primary-blue", bg: "bg-primary-blue/12", href: null },
   { icon: IdCard, label: "名刺管理", color: "text-brand-green", bg: "bg-brand-green/12", href: "/contacts" },
   { icon: Megaphone, label: "SNS発信", color: "text-accent-rose", bg: "bg-accent-rose/12", href: "/posting" },

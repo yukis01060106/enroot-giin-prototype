@@ -35,6 +35,7 @@
   --raw-accent-indigo: #5e35b1;
   --raw-accent-rose: #c2185b;
   --raw-accent-crimson: #d84315;
+  --raw-accent-cyan: #0097a7; /* ToDo（Next.js版で追加したカード。Flutter版のaccent系にはない） */
 
   --raw-radius-card: 16px;
   --raw-radius-chip: 20px;
@@ -63,6 +64,7 @@
   --color-accent-indigo: var(--raw-accent-indigo);
   --color-accent-rose: var(--raw-accent-rose);
   --color-accent-crimson: var(--raw-accent-crimson);
+  --color-accent-cyan: var(--raw-accent-cyan);
 
   --radius-card: var(--raw-radius-card);
   --radius-chip: var(--raw-radius-chip);
