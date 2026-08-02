@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type Viseme = "closed" | "open";
 
@@ -21,18 +21,12 @@ export type Viseme = "closed" | "open";
 export function useSpeakingCharacter() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [viseme, setViseme] = useState<Viseme>("closed");
-  // false固定で初期化し、マウント後のuseEffectでのみ更新する。
-  // `typeof window !== 'undefined'` をレンダー中に直接評価すると、
-  // ビルド時のサーバープリレンダー（windowなし）と実ブラウザでの
-  // ハイドレーション時（windowあり）で結果が食い違い、
-  // Reactのハイドレーションエラー（#418）になる。
-  const [supported, setSupported] = useState(false);
+  // ルートのHydrationGateがハイドレーション完了まで何も描画しないため、
+  // このフックが実際にレンダーされる時点では既にクライアント確定
+  // （windowは常に存在する）。そのままレンダー中に評価してよい。
+  const supported = useMemo(() => typeof window !== "undefined" && "speechSynthesis" in window, []);
   const fallbackTimerRef = useRef<number | null>(null);
   const boundaryFiredRef = useRef(false);
-
-  useEffect(() => {
-    setSupported("speechSynthesis" in window);
-  }, []);
 
   const clearFallbackTimer = useCallback(() => {
     if (fallbackTimerRef.current !== null) {

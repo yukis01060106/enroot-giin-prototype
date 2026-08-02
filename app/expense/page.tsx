@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Camera, FileDown, Receipt } from "lucide-react";
-import { useAppStore, useThisMonthExpenses, useThisMonthExpensesByCategory, useThisMonthExpenseTotal, monthlyExpenseBudget } from "@/store/appStore";
+import { useThisMonthExpenses, useThisMonthExpensesByCategory, useThisMonthExpenseTotal, monthlyExpenseBudget } from "@/store/appStore";
 import { formatYen } from "@/lib/currencyFormat";
 import { formatMD } from "@/lib/formatDate";
 import { EmptyState } from "@/components/ui/EmptyState";
