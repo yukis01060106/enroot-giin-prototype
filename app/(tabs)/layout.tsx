@@ -38,8 +38,8 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   }, [pathname, onboardingComplete, markHomeOpened]);
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="flex-1">{children}</div>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="min-h-0 flex-1">{children}</div>
       <BottomNav />
     </div>
   );

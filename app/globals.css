@@ -111,6 +111,14 @@
  * 優先されてしまうため、bodyへの背景色指定をclassName側（bg-primary-blue）と衝突させない。
  */
 @layer base {
+  html,
+  body {
+    /* アプリシェル全体はh-dvh固定・内側の各スクロール領域だけがスクロールする設計。
+       それでもiOS/Android側のネイティブなラバーバンド（バウンス）スクロールが
+       ドキュメント全体にかかると画面が上下にぶれて見えるため、念のため無効化する。 */
+    overscroll-behavior: none;
+  }
+
   body {
     line-height: 1.5;
   }

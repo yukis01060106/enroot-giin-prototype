@@ -42,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="ja" className={notoSansJP.variable}>
       <body className="font-sans antialiased bg-primary-blue">
-        <div className="mx-auto min-h-screen w-full max-w-[480px] overflow-hidden bg-scaffold-bg text-text-primary">
+        <div className="mx-auto h-dvh w-full max-w-[480px] overflow-hidden bg-scaffold-bg text-text-primary">
           <HydrationGate>{children}</HydrationGate>
         </div>
         <ToastHost />
