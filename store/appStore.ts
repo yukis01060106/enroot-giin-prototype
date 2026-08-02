@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
@@ -32,6 +33,16 @@ interface AppState {
   weeklyLineCount: number;
   profile: UserProfileModel;
   gikaiTemplates: GikaiTemplateModel[];
+
+  /**
+   * Flutter版 main.dart が SharedPreferences から同期読みしていた2つのフラグ。
+   * output:'export' はミドルウェア/サーバー側リダイレクトが使えないため、
+   * クライアント側でこのpersist済みlocalStorage値を見て初回起動判定する。
+   */
+  onboardingComplete: boolean;
+  hasOpenedHome: boolean;
+  completeOnboarding: () => void;
+  markHomeOpened: () => void;
 
   updateProfile: (update: (current: UserProfileModel) => UserProfileModel) => void;
   addRecord: (params: {
@@ -282,6 +293,10 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       ...seedData(defaultProfile),
+      onboardingComplete: false,
+      hasOpenedHome: false,
+      completeOnboarding: () => set({ onboardingComplete: true }),
+      markHomeOpened: () => set({ hasOpenedHome: true }),
 
       updateProfile: (update) =>
         set((state) => ({ profile: update(state.profile) })),
@@ -499,9 +514,18 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "enroot-app-storage",
-      // profileのみ永続化。それ以外は毎回seedDataで再生成される
-      // （Flutter版がSharedPreferencesにprofileしか保存しないのと同じ仕様）。
-      partialize: (state) => ({ profile: state.profile }),
+      // profile / onboardingComplete / hasOpenedHome のみ永続化。それ以外は毎回
+      // seedDataで再生成される（Flutter版がSharedPreferencesにこの3つしか
+      // 保存しないのと同じ仕様）。
+      partialize: (state) => ({
+        profile: state.profile,
+        onboardingComplete: state.onboardingComplete,
+        hasOpenedHome: state.hasOpenedHome,
+      }),
+      // output:'export'でもnext buildはクライアントコンポーネントを一度サーバー側で
+      // プリレンダーする。その際windowもlocalStorageも存在しないため、自動リハイドレーションを
+      // 無効化し、useStoreHydrated()内でマウント後にのみ明示的にrehydrate()する。
+      skipHydration: true,
     }
   )
 );
@@ -526,3 +550,19 @@ export const useThisMonthExpenses = () => useAppStore(useShallow((s) => s.thisMo
 export const useThisMonthExpensesByCategory = () =>
   useAppStore(useShallow((s) => s.thisMonthExpensesByCategory()));
 export const useThisMonthExpenseTotal = () => useAppStore((s) => s.thisMonthExpenseTotal());
+
+/**
+ * skipHydration:true にしているため、明示的に rehydrate() を呼ぶまで
+ * localStorageの内容はstateに反映されない（サーバープリレンダー時に
+ * window/localStorageが存在せず落ちるのを防ぐため）。このフックがマウント後に
+ * 一度だけrehydrate()を呼び、完了するまでfalseを返す。
+ */
+export function useStoreHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const unsub = useAppStore.persist.onFinishHydration(() => setHydrated(true));
+    useAppStore.persist.rehydrate();
+    return unsub;
+  }, []);
+  return hydrated;
+}
