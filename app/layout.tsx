@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { ToastHost } from "@/components/ToastHost";
+import { HydrationGate } from "@/components/HydrationGate";
 import "./globals.css";
 
 /*
@@ -42,7 +43,7 @@ export default function RootLayout({
     <html lang="ja" className={notoSansJP.variable}>
       <body className="font-sans antialiased bg-primary-blue">
         <div className="mx-auto min-h-screen w-full max-w-[480px] overflow-hidden bg-scaffold-bg text-text-primary">
-          {children}
+          <HydrationGate>{children}</HydrationGate>
         </div>
         <ToastHost />
       </body>

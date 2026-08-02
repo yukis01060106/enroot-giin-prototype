@@ -3,24 +3,24 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
-import { useAppStore, useStoreHydrated } from "@/store/appStore";
+import { useAppStore } from "@/store/appStore";
 
 /**
  * 4タブ（秘書/ホーム/議会準備/設定）共通のシェル。
  * Flutter版main.dartの初回起動リダイレクトロジック（SharedPreferencesの
  * onboarding_complete判定）をクライアント側で再現する。
  * output:'export'はmiddlewareが使えないため、ここでしか判定できない。
+ * ハイドレーション完了の待ち合わせはルートレイアウトのHydrationGateが
+ * 一括で担うため、ここでは常に完了済みの前提でよい。
  */
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const hydrated = useStoreHydrated();
   const onboardingComplete = useAppStore((s) => s.onboardingComplete);
   const hasOpenedHome = useAppStore((s) => s.hasOpenedHome);
   const markHomeOpened = useAppStore((s) => s.markHomeOpened);
 
   useEffect(() => {
-    if (!hydrated) return;
     if (!onboardingComplete) {
       router.replace("/onboarding");
       return;
@@ -29,15 +29,13 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     if (pathname === "/" && !hasOpenedHome) {
       router.replace("/secretary");
     }
-  }, [hydrated, onboardingComplete, hasOpenedHome, pathname, router]);
+  }, [onboardingComplete, hasOpenedHome, pathname, router]);
 
   useEffect(() => {
-    if (pathname === "/" && hydrated && onboardingComplete) {
+    if (pathname === "/" && onboardingComplete) {
       markHomeOpened();
     }
-  }, [pathname, hydrated, onboardingComplete, markHomeOpened]);
-
-  if (!hydrated) return null;
+  }, [pathname, onboardingComplete, markHomeOpened]);
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { RecordBottomSheet } from "@/components/RecordBottomSheet";
 import {
   Search,
   Bell,
@@ -36,6 +38,7 @@ export default function HomePage() {
   const reminderPersons = useReminderPersons().slice(0, 2);
   const records = useAppStore((s) => s.records).slice(0, 3);
   const greetingText = buildGreeting();
+  const [recordSheetOpen, setRecordSheetOpen] = useState(false);
 
   return (
     <div className="flex h-full flex-col">
@@ -80,7 +83,7 @@ export default function HomePage() {
             ) : (
               <button
                 key={label}
-                onClick={() => showNotReady("メモ")}
+                onClick={() => setRecordSheetOpen(true)}
                 className="flex items-center gap-2.5 rounded-card bg-white px-3.5 py-3 text-left shadow-card"
               >
                 <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-input ${bg}`}>
@@ -151,6 +154,7 @@ export default function HomePage() {
         )}
         <div className="h-4" />
       </div>
+      <RecordBottomSheet open={recordSheetOpen} onOpenChange={setRecordSheetOpen} />
     </div>
   );
 }
