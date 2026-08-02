@@ -182,18 +182,21 @@ export default function GeneralQuestionPage() {
             <p className="mb-1 mt-2 font-bold">質問要旨</p>
             <p className="whitespace-pre-wrap leading-relaxed">{draft}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="no-print flex gap-2">
             <button
-              onClick={() => showToast("PDF出力は近日対応予定です（プロトタイプでは未接続の機能です）")}
+              onClick={() => window.print()}
               className="h-tap-target flex-1 rounded-input border border-neutral-gray font-semibold"
             >
               PDF出力
             </button>
             <button
-              onClick={() => showToast("Word出力は近日対応予定です（プロトタイプでは未接続の機能です）")}
+              onClick={async () => {
+                await navigator.clipboard.writeText(`${theme}について\n\n${draft}`);
+                showToast("テキストをコピーしました");
+              }}
               className="h-tap-target flex-1 rounded-input border border-neutral-gray font-semibold"
             >
-              Word出力
+              テキストをコピー
             </button>
           </div>
         </div>

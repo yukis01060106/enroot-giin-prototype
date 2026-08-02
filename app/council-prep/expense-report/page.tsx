@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { WizardShell } from "@/components/gikai/WizardShell";
-import { useAppStore, useThisMonthExpenses, useThisMonthExpensesByCategory, useThisMonthExpenseTotal } from "@/store/appStore";
-import { showToast, showNotReady } from "@/lib/notReady";
+import { useAppStore } from "@/store/appStore";
+import { showToast } from "@/lib/notReady";
 import * as gikai from "@/lib/gikaiDraftMockService";
 
 const stepTitles = ["対象期間の確認", "収支報告書プレビュー"];
@@ -12,39 +12,50 @@ const secretaryTips = [
   "対象期間を選んでください。記録済みの経費データから自動で集計しますね。",
   "収支報告書ができました。証憑との突合をお忘れなく。",
 ];
-const periods = ["今月", "先月", "今年度"];
+const periods = ["今月", "先月", "今年度"] as const;
+type Period = (typeof periods)[number];
+
+/** 「今年度」は4月始まり・翌年3月末までの日本の年度基準。 */
+function periodRange(period: Period, now: Date): { start: Date; end: Date } {
+  if (period === "今月") {
+    return { start: new Date(now.getFullYear(), now.getMonth(), 1), end: new Date(now.getFullYear(), now.getMonth() + 1, 1) };
+  }
+  if (period === "先月") {
+    return { start: new Date(now.getFullYear(), now.getMonth() - 1, 1), end: new Date(now.getFullYear(), now.getMonth(), 1) };
+  }
+  const fiscalYearStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return { start: new Date(fiscalYearStart, 3, 1), end: new Date(fiscalYearStart + 1, 3, 1) };
+}
 
 export default function ExpenseReportPage() {
   const router = useRouter();
   const addTodo = useAppStore((s) => s.addTodo);
-  const thisMonthExpenses = useThisMonthExpenses();
-  const thisMonthByCategory = useThisMonthExpensesByCategory();
-  const thisMonthTotal = useThisMonthExpenseTotal();
+  const expenses = useAppStore((s) => s.expenses);
 
   const [step, setStep] = useState(0);
   const [processing, setProcessing] = useState(false);
-  const [period, setPeriod] = useState(periods[0]);
+  const [period, setPeriod] = useState<Period>(periods[0]);
   const [report, setReport] = useState("");
 
+  const { total, byCategory, count } = useMemo(() => {
+    const { start, end } = periodRange(period, new Date());
+    const target = expenses.filter((e) => {
+      const d = new Date(e.date);
+      return d >= start && d < end;
+    });
+    const byCat: Record<string, number> = {};
+    for (const e of target) byCat[e.category] = (byCat[e.category] ?? 0) + e.amount;
+    return { total: target.reduce((sum, e) => sum + e.amount, 0), byCategory: byCat, count: target.length };
+  }, [expenses, period]);
+
   async function goNext() {
-    if (period !== "今月") {
-      showNotReady(`${period}の集計`);
-      return;
-    }
     if (step === stepTitles.length - 1) {
       finish();
       return;
     }
     setProcessing(true);
     await new Promise((r) => setTimeout(r, 600));
-    setReport(
-      gikai.generateSeimuKatsudouhiReport({
-        periodLabel: period,
-        total: thisMonthTotal,
-        byCategory: thisMonthByCategory,
-        count: thisMonthExpenses.length,
-      })
-    );
+    setReport(gikai.generateSeimuKatsudouhiReport({ periodLabel: period, total, byCategory, count }));
     setProcessing(false);
     setStep((s) => s + 1);
   }
@@ -90,18 +101,21 @@ export default function ExpenseReportPage() {
           <div className="whitespace-pre-wrap rounded-card bg-white p-4 leading-relaxed shadow-card">
             {report}
           </div>
-          <div className="flex gap-2">
+          <div className="no-print flex gap-2">
             <button
-              onClick={() => showToast("PDF出力は近日対応予定です（プロトタイプでは未接続の機能です）")}
+              onClick={() => window.print()}
               className="h-tap-target flex-1 rounded-input border border-neutral-gray font-semibold"
             >
               PDF出力
             </button>
             <button
-              onClick={() => showToast("Word出力は近日対応予定です（プロトタイプでは未接続の機能です）")}
+              onClick={async () => {
+                await navigator.clipboard.writeText(report);
+                showToast("テキストをコピーしました");
+              }}
               className="h-tap-target flex-1 rounded-input border border-neutral-gray font-semibold"
             >
-              Word出力
+              テキストをコピー
             </button>
           </div>
         </div>

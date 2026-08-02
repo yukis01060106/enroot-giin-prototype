@@ -37,14 +37,14 @@ export function WizardShell({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
+      <header className="no-print flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
         <button onClick={() => router.push(backHref)} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>
         <h1 className="truncate text-lg font-bold">{title}</h1>
       </header>
 
-      <div className="shrink-0 px-4 pb-2 pt-3">
+      <div className="no-print shrink-0 px-4 pb-2 pt-3">
         <p className="font-bold">
           ステップ {step + 1} / {stepTitles.length}：{stepTitles[step]}
         </p>
@@ -56,11 +56,13 @@ export function WizardShell({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4">
-        <SecretaryTipBubble text={tip} />
+      <div className="report-print-area flex-1 overflow-y-auto px-4 pb-4">
+        <div className="no-print">
+          <SecretaryTipBubble text={tip} />
+        </div>
         <div className="mt-4">
           {processing ? (
-            <div className="flex justify-center py-8">
+            <div className="no-print flex justify-center py-8">
               <Loader2 size={28} className="animate-spin text-brand-green" />
             </div>
           ) : (
@@ -69,7 +71,7 @@ export function WizardShell({
         </div>
       </div>
 
-      <div className="flex shrink-0 gap-3 px-4 pb-4 pt-2">
+      <div className="no-print flex shrink-0 gap-3 px-4 pb-4 pt-2">
         {step > 0 && !processing && (
           <button
             onClick={onBack}

@@ -123,3 +123,23 @@
     line-height: 1.5;
   }
 }
+
+/*
+ * 報告書画面（レシート等をPDF化したいニーズに、サーバー側PDF生成なしで
+ * 応える）専用の印刷対応。通常画面は480px幅・高さ固定のアプリシェルだが、
+ * 印刷時だけその制約を解除して用紙全体に流し込む。
+ */
+@media print {
+  .app-frame {
+    height: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+  .report-print-area {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

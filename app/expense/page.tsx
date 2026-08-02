@@ -8,7 +8,6 @@ import { formatYen } from "@/lib/currencyFormat";
 import { formatMD } from "@/lib/formatDate";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PieChart, PieChartLegend } from "@/components/ui/PieChart";
-import { showNotReady } from "@/lib/notReady";
 
 export default function ExpensePage() {
   const router = useRouter();
@@ -116,7 +115,7 @@ export default function ExpensePage() {
         <div className="mb-2 mt-6 flex items-center justify-between">
           <h2 className="text-lg font-bold">経費一覧</h2>
           <button
-            onClick={() => showNotReady("PDF報告書出力")}
+            onClick={() => router.push(`/expense/report?year=${period.year}&month=${period.month}`)}
             className="flex items-center gap-1 text-sm font-semibold text-primary-blue"
           >
             <FileDown size={16} />

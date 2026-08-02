@@ -128,20 +128,28 @@ export default function InspectionReportPage() {
             value={report}
             onChange={(e) => setReport(e.target.value)}
             rows={12}
-            className="w-full rounded-card bg-white p-4 leading-relaxed shadow-card outline-none"
+            className="no-print w-full rounded-card bg-white p-4 leading-relaxed shadow-card outline-none"
           />
-          <div className="flex gap-2">
+          {/* textareaは印刷時にレイアウトが崩れる（一部ブラウザで空欄・切れる）ため、
+              印刷時だけ現在の内容を通常のテキストとして表示する */}
+          <div className="hidden whitespace-pre-wrap rounded-card bg-white p-4 leading-relaxed print:block">
+            {report}
+          </div>
+          <div className="no-print flex gap-2">
             <button
-              onClick={() => showToast("PDF出力は近日対応予定です（プロトタイプでは未接続の機能です）")}
+              onClick={() => window.print()}
               className="h-tap-target flex-1 rounded-input border border-neutral-gray font-semibold"
             >
               PDF出力
             </button>
             <button
-              onClick={() => showToast("Word出力は近日対応予定です（プロトタイプでは未接続の機能です）")}
+              onClick={async () => {
+                await navigator.clipboard.writeText(report);
+                showToast("テキストをコピーしました");
+              }}
               className="h-tap-target flex-1 rounded-input border border-neutral-gray font-semibold"
             >
-              Word出力
+              テキストをコピー
             </button>
           </div>
         </div>
