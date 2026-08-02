@@ -12,6 +12,7 @@ import type {
   RecordCategory,
   ScheduleModel,
   TodoModel,
+  TodoPriority,
   UserProfileModel,
 } from "@/types/models";
 import { defaultProfile } from "@/types/models";
@@ -67,7 +68,7 @@ interface AppState {
     startAt: string;
     endAt?: string;
   }) => ScheduleModel;
-  addTodo: (params: { title: string; dueDate?: string }) => void;
+  addTodo: (params: { title: string; dueDate?: string; priority?: TodoPriority }) => void;
   toggleTodo: (id: string) => void;
   addBenchmarkAccount: (params: {
     name: string;
@@ -232,6 +233,31 @@ function seedData(profile: UserProfileModel) {
     { id: "t1", title: "街灯修繕を道路課に連絡", dueDate: atTime(0, 0), isCompleted: false, priority: "high" },
     { id: "t2", title: "一般質問の原稿作成", dueDate: daysFromNow(5), isCompleted: false, priority: "medium" },
     { id: "t3", title: "住民相談の対応記録をまとめる", dueDate: daysAgo(2), isCompleted: false, priority: "high" },
+    { id: "t4", title: "議会だより原稿の確認", isCompleted: false, priority: "low" },
+    {
+      id: "t5",
+      title: "商工会議所への挨拶回り",
+      dueDate: daysAgo(3),
+      isCompleted: true,
+      completedAt: daysAgo(3),
+      priority: "medium",
+    },
+    {
+      id: "t6",
+      title: "視察報告書の提出",
+      dueDate: daysAgo(20),
+      isCompleted: true,
+      completedAt: daysAgo(18),
+      priority: "high",
+    },
+    {
+      id: "t7",
+      title: "町内会の役員会に出席",
+      dueDate: daysAgo(45),
+      isCompleted: true,
+      completedAt: daysAgo(45),
+      priority: "low",
+    },
   ];
 
   const expenses: ExpenseModel[] = [
@@ -391,17 +417,21 @@ export const useAppStore = create<AppState>()(
         return meeting;
       },
 
-      addTodo: ({ title, dueDate }) =>
+      addTodo: ({ title, dueDate, priority }) =>
         set((state) => ({
           todos: [
             ...state.todos,
-            { id: `manual_t_${Date.now()}`, title, dueDate, isCompleted: false, priority: "medium" },
+            { id: `manual_t_${Date.now()}`, title, dueDate, isCompleted: false, priority: priority ?? "medium" },
           ],
         })),
 
       toggleTodo: (id) =>
         set((state) => ({
-          todos: state.todos.map((t) => (t.id === id ? { ...t, isCompleted: !t.isCompleted } : t)),
+          todos: state.todos.map((t) =>
+            t.id === id
+              ? { ...t, isCompleted: !t.isCompleted, completedAt: !t.isCompleted ? new Date().toISOString() : undefined }
+              : t
+          ),
         })),
 
       addBenchmarkAccount: ({ name, platform, handle, note }) =>

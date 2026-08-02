@@ -34,6 +34,8 @@ export interface TodoModel {
   title: string;
   dueDate?: string;
   isCompleted: boolean;
+  /** 完了にした日時（完了済み一覧の月別グルーピングに使う）。未完了はundefined。 */
+  completedAt?: string;
   priority: TodoPriority;
 }
 
