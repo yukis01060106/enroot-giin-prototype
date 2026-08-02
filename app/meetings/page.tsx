@@ -73,7 +73,7 @@ export default function MeetingsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between bg-primary-blue px-2 text-white">
+      <header className="flex h-14 shrink-0 items-center justify-between bg-gradient-primary px-2 text-white">
         <div className="flex items-center gap-2">
           <button onClick={() => router.push("/")} aria-label="戻る" className="rounded-full p-2">
             <ArrowLeft size={20} />

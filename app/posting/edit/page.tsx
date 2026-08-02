@@ -50,7 +50,7 @@ function PostEditInner() {
 
   return (
     <div className="relative flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-2 bg-primary-blue px-2 text-white">
+      <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
         <button onClick={() => router.push("/posting")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>
@@ -183,7 +183,7 @@ function PostPreviewOverlay({
   const authorName = useAppStore((s) => s.profile.displayName);
   return (
     <div className="absolute inset-0 z-40 flex flex-col bg-scaffold-bg">
-      <header className="flex h-14 shrink-0 items-center gap-2 bg-primary-blue px-2 text-white">
+      <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
         <button onClick={onClose} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>

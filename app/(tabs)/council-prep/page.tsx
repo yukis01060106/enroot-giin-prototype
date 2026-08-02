@@ -17,16 +17,18 @@ function LiveCard({
   title,
   subtitle,
   href,
+  gradient = "bg-gradient-primary",
 }: {
   icon: typeof PenLine;
   title: string;
   subtitle: string;
   href: string;
+  gradient?: string;
 }) {
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-card bg-gradient-primary p-4 text-white shadow-raised"
+      className={`flex items-center gap-3 rounded-card ${gradient} p-4 text-white shadow-raised`}
     >
       <Icon size={32} />
       <div className="min-w-0 flex-1">
@@ -53,7 +55,7 @@ function DisabledRow({ label, feature }: { label: string; feature: string }) {
 export default function CouncilPrepPage() {
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center bg-primary-blue px-4 text-white">
+      <header className="flex h-14 shrink-0 items-center bg-gradient-primary px-4 text-white">
         <h1 className="text-lg font-bold">議会準備</h1>
       </header>
 
@@ -76,12 +78,14 @@ export default function CouncilPrepPage() {
             title="視察報告書を作る"
             subtitle="視察先・目的とメモから、報告書の草案を3ステップで作成"
             href="/council-prep/inspection-report"
+            gradient="bg-gradient-teal"
           />
           <LiveCard
             icon={ClipboardList}
             title="政務活動費収支報告書を作る"
             subtitle="記録済みの経費データから収支報告書を自動集計"
             href="/council-prep/expense-report"
+            gradient="bg-gradient-teal"
           />
         </div>
 
@@ -92,12 +96,14 @@ export default function CouncilPrepPage() {
             title="住民相談を管理"
             subtitle="相談メモの対応状況（未対応・対応中・完了）を一覧管理"
             href="/council-prep/consultations"
+            gradient="bg-gradient-indigo"
           />
           <LiveCard
             icon={FolderArchive}
             title="テンプレート管理"
             subtitle="通告書・報告書等の書式を議会ごとに保存"
             href="/council-prep/templates"
+            gradient="bg-gradient-indigo"
           />
         </div>
 

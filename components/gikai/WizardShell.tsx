@@ -35,7 +35,7 @@ export function WizardShell({
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-2 bg-primary-blue px-2 text-white">
+      <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
         <button onClick={() => router.push("/council-prep")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>

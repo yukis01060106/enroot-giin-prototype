@@ -41,7 +41,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center bg-primary-blue px-4 text-white">
+      <header className="flex h-14 shrink-0 items-center bg-gradient-primary px-4 text-white">
         <h1 className="text-lg font-bold">設定</h1>
       </header>
 

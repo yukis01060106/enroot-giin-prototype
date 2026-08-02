@@ -42,7 +42,7 @@ export default function HomePage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-14 shrink-0 items-center justify-between bg-primary-blue px-4 text-white">
+      <header className="flex h-14 shrink-0 items-center justify-between bg-gradient-primary px-4 text-white">
         <h1 className="text-lg font-bold">ホーム</h1>
         <div className="flex items-center gap-1">
           <Link href="/search" aria-label="横断検索" className="rounded-full p-2">

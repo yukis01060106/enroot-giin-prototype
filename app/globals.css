@@ -11,6 +11,17 @@
 :root {
   --raw-primary-blue: #1565c0;
   --raw-primary-blue-light: #1e88e5;
+  /* グラデーション専用の明暗ストップ。primary-blue/primary-blue-light同士だと
+     明度差が小さすぎてグラデーションに見えず、単なる濃淡違いの平坦な塗りに
+     見えてしまっていたため、両端をはっきり離した専用トーンを別に持つ。 */
+  --raw-gradient-blue-start: #5eb3f5;
+  --raw-gradient-blue-end: #0d3f8f;
+  --raw-gradient-teal-start: #4dd0c4;
+  --raw-gradient-teal-end: #00594e;
+  --raw-gradient-indigo-start: #9575cd;
+  --raw-gradient-indigo-end: #33146e;
+  --raw-gradient-rose-start: #f06292;
+  --raw-gradient-rose-end: #8c0e3d;
   --raw-brand-green: #2e7d32;
   --raw-light-green: #66bb6a;
   --raw-neutral-gray: #f5f5f5;
@@ -73,11 +84,19 @@
 
 /* Tailwindのbg-gradient-to-brユーティリティで代替できないブランド固有グラデーション */
 @utility bg-gradient-primary {
-  background-image: linear-gradient(
-    135deg,
-    var(--raw-primary-blue-light),
-    var(--raw-primary-blue)
-  );
+  background-image: linear-gradient(135deg, var(--raw-gradient-blue-start), var(--raw-gradient-blue-end));
+}
+
+@utility bg-gradient-teal {
+  background-image: linear-gradient(135deg, var(--raw-gradient-teal-start), var(--raw-gradient-teal-end));
+}
+
+@utility bg-gradient-indigo {
+  background-image: linear-gradient(135deg, var(--raw-gradient-indigo-start), var(--raw-gradient-indigo-end));
+}
+
+@utility bg-gradient-rose {
+  background-image: linear-gradient(135deg, var(--raw-gradient-rose-start), var(--raw-gradient-rose-end));
 }
 
 @utility bg-gradient-brand-green {
