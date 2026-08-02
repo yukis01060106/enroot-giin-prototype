@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { ToastHost } from "@/components/ToastHost";
 import "./globals.css";
 
 /*
@@ -43,6 +44,7 @@ export default function RootLayout({
         <div className="mx-auto min-h-screen w-full max-w-[480px] overflow-hidden bg-scaffold-bg text-text-primary">
           {children}
         </div>
+        <ToastHost />
       </body>
     </html>
   );
