@@ -9,6 +9,8 @@ import {
   Receipt,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Plus,
 } from "lucide-react";
 import { useAppStore, monthlyExpenseBudget } from "@/store/appStore";
@@ -38,6 +40,7 @@ export default function ExpensePage() {
   });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseModel | null>(null);
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
 
   const isCurrentMonth = useMemo(() => {
     const now = new Date();
@@ -109,9 +112,9 @@ export default function ExpensePage() {
             <ChevronLeft size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <span className="font-bold">
+            <button onClick={() => setMonthPickerOpen(true)} className="font-bold underline decoration-dotted underline-offset-4">
               {period.year}年{period.month + 1}月
-            </span>
+            </button>
             {isCurrentMonth ? (
               <span className="rounded-chip bg-brand-green/10 px-2 py-0.5 text-xs font-semibold text-brand-green">
                 今月
@@ -262,7 +265,89 @@ export default function ExpensePage() {
       </div>
 
       <ExpenseFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editingExpense={editingExpense} />
+      <MonthPickerDialog
+        open={monthPickerOpen}
+        onOpenChange={setMonthPickerOpen}
+        period={period}
+        onSelect={(p) => {
+          setActiveCategory(null);
+          setPeriod(p);
+          setMonthPickerOpen(false);
+        }}
+      />
     </div>
+  );
+}
+
+const monthLabels = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+
+/**
+ * 「‹›」の1ヶ月ずつの送りだけだと去年以前に戻るのに何度もタップが必要になる
+ * （ユーザー指摘）ため、年を跨いで一気にジャンプできる年月ピッカーを別途用意する。
+ * 1ヶ月ずつの送りボタンもよく使う操作なので残しつつ、こちらは「遠くへ跳ぶ」用途。
+ */
+function MonthPickerDialog({
+  open,
+  onOpenChange,
+  period,
+  onSelect,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  period: { year: number; month: number };
+  onSelect: (period: { year: number; month: number }) => void;
+}) {
+  const [pickerYear, setPickerYear] = useState(period.year);
+
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setPickerYear(period.year);
+  }
+
+  const now = new Date();
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange} title="年月を選ぶ">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setPickerYear((y) => y - 1)}
+          aria-label="前の年"
+          className="p-2 text-text-secondary"
+        >
+          <ChevronsLeft size={20} />
+        </button>
+        <span className="text-lg font-bold">{pickerYear}年</span>
+        <button
+          onClick={() => setPickerYear((y) => y + 1)}
+          aria-label="次の年"
+          className="p-2 text-text-secondary"
+        >
+          <ChevronsRight size={20} />
+        </button>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {monthLabels.map((label, i) => {
+          const isSelected = pickerYear === period.year && i === period.month;
+          const isThisMonth = pickerYear === now.getFullYear() && i === now.getMonth();
+          return (
+            <button
+              key={label}
+              onClick={() => onSelect({ year: pickerYear, month: i })}
+              className={`rounded-input py-2.5 text-sm font-semibold ${
+                isSelected
+                  ? "bg-brand-green text-white"
+                  : isThisMonth
+                    ? "bg-brand-green/10 text-brand-green"
+                    : "bg-neutral-gray text-text-secondary"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </Dialog>
   );
 }
 

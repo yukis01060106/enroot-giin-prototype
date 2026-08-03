@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, FileSpreadsheet } from "lucide-react";
 import { SuspenseBoundary } from "@/components/SuspenseBoundary";
 import { useAppStore } from "@/store/appStore";
 import { formatYen } from "@/lib/currencyFormat";
@@ -42,22 +42,54 @@ function ExpenseReportInner() {
 
   const total = periodExpenses.reduce((sum, e) => sum + e.amount, 0);
 
+  function csvEscape(value: string): string {
+    if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+    return value;
+  }
+
+  function downloadCsv() {
+    const header = ["日付", "費目", "店名", "メモ", "金額"];
+    const rows = periodExpenses.map((e) => {
+      const d = new Date(e.date);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return [dateStr, e.category, e.store ?? "", e.note ?? "", String(e.amount)];
+    });
+    const csv = [header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
+    // 先頭にBOMを付与しないとExcel(日本語版)で開いた際に文字化けする
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `経費_${year}年${month + 1}月.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="flex h-full flex-col">
-      <header className="no-print flex h-14 shrink-0 items-center justify-between bg-gradient-primary px-2 text-white">
-        <div className="flex items-center gap-2">
-          <button onClick={() => router.push("/expense")} aria-label="戻る" className="rounded-full p-2">
+      <header className="no-print flex h-14 shrink-0 items-center justify-between gap-2 bg-gradient-primary px-2 text-white">
+        <div className="flex min-w-0 items-center gap-2">
+          <button onClick={() => router.push("/expense")} aria-label="戻る" className="shrink-0 rounded-full p-2">
             <ArrowLeft size={20} />
           </button>
-          <h1 className="text-lg font-bold">経費報告書</h1>
+          <h1 className="truncate text-lg font-bold">経費報告書</h1>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 rounded-input bg-white/15 px-3 py-1.5 font-semibold"
-        >
-          <Printer size={16} />
-          印刷 / PDF保存
-        </button>
+        <div className="flex shrink-0 gap-1.5">
+          <button
+            onClick={downloadCsv}
+            className="flex items-center gap-1.5 rounded-input bg-white/15 px-3 py-1.5 text-sm font-semibold"
+          >
+            <FileSpreadsheet size={16} />
+            CSV
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 rounded-input bg-white/15 px-3 py-1.5 text-sm font-semibold"
+          >
+            <Printer size={16} />
+            PDF
+          </button>
+        </div>
       </header>
 
       <div className="report-print-area flex-1 overflow-y-auto bg-white p-6 print:p-0">

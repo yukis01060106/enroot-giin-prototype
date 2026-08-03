@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { ArrowLeft, Camera, Loader2, Receipt } from "lucide-react";
+import { ArrowLeft, Camera, Loader2, Receipt, Sparkles, FlaskConical } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { expenseCategories } from "@/types/models";
+import { extractReceiptText } from "@/lib/receiptOcrService";
+import { classifyReceiptText } from "@/lib/receiptClassify";
 import { showToast } from "@/lib/notReady";
 
 const mockReceipts = [
@@ -18,16 +20,20 @@ const mockReceipts = [
  * （Flutter版は別ルートへのpushReplacementだが、値の受け渡しが単純な
  * ローカルstateで足りるためNext.js版では1ページにまとめた）。
  *
- * 文字の読み取り（費目・金額・店名の自動入力）はGoogle Cloud Vision未接続の
- * モックだが、写真そのものは<input type="file" capture>で実際に撮影/選択した
- * ものをdata URLとして保存する（読み取りだけがモック、撮影・保存自体は本物）。
+ * 文字の読み取りはGoogle Cloud Vision（OCR）をSupabase Edge Function経由で
+ * 呼び、実際に写っている文字から費目・金額・店名を推測する
+ * （lib/receiptClassify.tsのキーワード一致ベースの簡易分類）。
+ * Supabase未設定・Vision API未設定・呼び出し失敗時は、tts/secretary-chatと
+ * 同じ方針でモックの読み取り結果にフォールバックする（クラッシュしない）。
+ * どちらが使われたかは確認画面に明示し、AI分類はあくまで下書きである旨を示す。
  */
 export default function ReceiptScanPage() {
   const router = useRouter();
   const addExpense = useAppStore((s) => s.addExpense);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<typeof mockReceipts[number] | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const [usedRealOcr, setUsedRealOcr] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
@@ -43,15 +49,31 @@ export default function ReceiptScanPage() {
       reader.readAsDataURL(file);
     });
     setPhotoUrl(dataUrl);
-
     setScanning(true);
-    // 実際の画像はもう保存済み。文字の読み取り（費目・金額・店名）だけモック。
-    await new Promise((r) => setTimeout(r, 1400));
-    const mock = mockReceipts[Math.floor(Math.random() * mockReceipts.length)];
-    setResult(mock);
-    setCategory(mock.category);
-    setAmount(String(mock.amount));
-    setStore(mock.store);
+
+    let ok = false;
+    try {
+      const base64 = dataUrl.split(",")[1] ?? "";
+      const text = await extractReceiptText(base64);
+      const classified = classifyReceiptText(text);
+      setCategory(classified.category);
+      setAmount(classified.amount ? String(classified.amount) : "");
+      setStore(classified.store ?? "");
+      setUsedRealOcr(true);
+      ok = true;
+    } catch {
+      // Supabase未設定 or Vision API未設定 or 通信失敗。デモ用のモック結果にフォールバック。
+    }
+
+    if (!ok) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const mock = mockReceipts[Math.floor(Math.random() * mockReceipts.length)];
+      setCategory(mock.category);
+      setAmount(String(mock.amount));
+      setStore(mock.store);
+      setUsedRealOcr(false);
+    }
+    setScanned(true);
     setScanning(false);
   }
 
@@ -75,11 +97,11 @@ export default function ReceiptScanPage() {
         <button onClick={() => router.push("/expense")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-bold">{result ? "内容を確認" : "レシートを撮影"}</h1>
+        <h1 className="text-lg font-bold">{scanned ? "内容を確認" : "レシートを撮影"}</h1>
       </header>
 
       <div className="flex-1 overflow-y-auto p-6">
-        {!result ? (
+        {!scanned ? (
           <div className="flex h-full flex-col items-center justify-center gap-8">
             <input
               ref={fileInputRef}
@@ -114,6 +136,17 @@ export default function ReceiptScanPage() {
             {photoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={photoUrl} alt="レシート" className="h-40 w-full rounded-card object-cover shadow-card" />
+            )}
+            {usedRealOcr ? (
+              <div className="flex items-start gap-2 rounded-input bg-brand-green/10 p-3 text-sm text-brand-green">
+                <Sparkles size={16} className="mt-0.5 shrink-0" />
+                <span>AIがレシートの文字を読み取り、費目・金額を自動入力しました。内容を確認してください。</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-input bg-warning/10 p-3 text-sm text-warning">
+                <FlaskConical size={16} className="mt-0.5 shrink-0" />
+                <span>読み取り機能が未設定のため、サンプルデータを表示しています。内容を書き換えて保存してください。</span>
+              </div>
             )}
             <div>
               <label className="mb-1 block font-semibold">費目</label>

@@ -54,6 +54,16 @@ npx serve out   # or 任意の静的サーバー
 
 未設定・Edge Function呼び出し失敗の間は、自動的にブラウザ内蔵TTSにフォールバックする（クラッシュしない）。
 
+### レシートのOCR自動読み取り（Google Cloud Vision）
+
+経費のレシート撮影時、Google Cloud Vision（Text Detection）をSupabase Edge Function経由で呼び、実際に写っている文字から費目・金額・店名を自動入力する。費目の推測は`lib/receiptClassify.ts`のキーワード一致による簡易分類（会計士の最終確認を前提とした下書き）。
+
+1. Google CloudプロジェクトでCloud Vision APIを有効化し、APIキーを発行（無料枠・料金は[Cloud Vision料金ページ](https://cloud.google.com/vision/pricing)で要確認。月1,000ユニットまで無料）
+2. `supabase secrets set GOOGLE_VISION_API_KEY=...` → `supabase functions deploy receipt-ocr`（`supabase/functions/receipt-ocr`、このリポジトリに実装済み）
+3. `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` はAI秘書チャットと共通（上記参照、追加設定不要）
+
+未設定・Edge Function呼び出し失敗の間は、自動的にモックの読み取り結果（ランダムなサンプル3件のいずれか）にフォールバックする（クラッシュしない）。確認画面にはどちらが使われたかを明示するバッジを表示する。
+
 ## AIキャラクター（リップシンク）
 
 `components/character/SpeakingCharacter.tsx` — 1枚の人物写真（`public/images/secretary_misaki.png`）に、口の位置へ重ねたCSS楕円を開閉させる簡易リップシンク。`lib/useSpeakingCharacter.ts`が発話の駆動元を2段構えで持つ:
