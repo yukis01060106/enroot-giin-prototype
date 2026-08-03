@@ -138,6 +138,7 @@ interface AppState {
   }) => void;
   publishPost: (params: { toFacebook: boolean; toLine: boolean; draftId?: string }) => void;
   addPostDraft: (params: { content: string; lineContent?: string; sourceSummary?: string }) => PostDraftModel;
+  removePostDraft: (id: string) => void;
 
   // 派生ゲッター（Dartのgetterと同じくFlutter版は毎回計算、メモ化はしない）
   meetings: () => ScheduleModel[];
@@ -625,6 +626,8 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ postDrafts: [draft, ...state.postDrafts] }));
         return draft;
       },
+
+      removePostDraft: (id) => set((state) => ({ postDrafts: state.postDrafts.filter((d) => d.id !== id) })),
 
       publishPost: ({ toFacebook, toLine, draftId }) =>
         set((state) => ({

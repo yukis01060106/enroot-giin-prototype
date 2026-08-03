@@ -1,13 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Star, Pencil, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Star, Pencil, Sparkles, Share2, MessageCircle, Trash2, FileEdit } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { PostingStatusCard } from "@/components/PostingStatusCard";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Dialog } from "@/components/ui/Dialog";
+import { formatMD } from "@/lib/formatDate";
 
 export default function PostingPage() {
   const router = useRouter();
   const drafts = useAppStore((s) => s.postDrafts);
+  const removePostDraft = useAppStore((s) => s.removePostDraft);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   return (
     <div className="flex h-full flex-col">
@@ -32,19 +38,37 @@ export default function PostingPage() {
         <p className="text-sm text-text-secondary">AIが記録メモから発信候補を自動検出しました</p>
         <div className="mt-2 flex flex-col gap-2">
           {drafts.length === 0 ? (
-            <p className="py-4 text-text-secondary">下書きはありません</p>
+            <EmptyState icon={FileEdit} message="下書きはありません" actionHint="下の「美咲と一緒に作る」から作成できます" />
           ) : (
             drafts.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => router.push(`/posting/edit?draftId=${d.id}`)}
-                className="rounded-card bg-white p-3 text-left shadow-card"
-              >
-                <p className="line-clamp-3">{d.content}</p>
-                {d.sourceSummary && (
-                  <p className="mt-1 text-xs text-text-secondary">元の記録: {d.sourceSummary}</p>
-                )}
-              </button>
+              <div key={d.id} className="rounded-card bg-white p-3 shadow-card">
+                <button onClick={() => router.push(`/posting/edit?draftId=${d.id}`)} className="w-full text-left">
+                  <p className="line-clamp-3">{d.content}</p>
+                  {d.sourceSummary && (
+                    <p className="mt-1 text-xs text-text-secondary">元の記録: {d.sourceSummary}</p>
+                  )}
+                </button>
+                <div className="mt-2 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-text-secondary">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-blue/12 text-primary-blue">
+                      <Share2 size={11} />
+                    </span>
+                    {d.lineContent && (
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-green/12 text-brand-green">
+                        <MessageCircle size={11} />
+                      </span>
+                    )}
+                    <span className="text-xs">{formatMD(new Date(d.createdAt))}作成</span>
+                  </div>
+                  <button
+                    onClick={() => setDeleteTargetId(d.id)}
+                    aria-label="下書きを削除"
+                    className="p-1 text-text-secondary"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
             ))
           )}
         </div>
@@ -67,6 +91,30 @@ export default function PostingPage() {
         <h2 className="mb-2 mt-6 text-lg font-bold">今月の発信状況</h2>
         <PostingStatusCard />
       </div>
+
+      <Dialog
+        open={deleteTargetId !== null}
+        onOpenChange={(o) => !o && setDeleteTargetId(null)}
+        title="下書きを削除"
+        footer={
+          <>
+            <button onClick={() => setDeleteTargetId(null)} className="px-3 py-2 text-text-secondary">
+              キャンセル
+            </button>
+            <button
+              onClick={() => {
+                if (deleteTargetId) removePostDraft(deleteTargetId);
+                setDeleteTargetId(null);
+              }}
+              className="rounded-input bg-error px-4 py-2 font-semibold text-white"
+            >
+              削除する
+            </button>
+          </>
+        }
+      >
+        <p className="leading-relaxed">この下書きを削除しますか？この操作は取り消せません。</p>
+      </Dialog>
     </div>
   );
 }

@@ -18,7 +18,7 @@ export function PostingStatusCard() {
         <span>Facebook {fb}件</span>
         <span className="ml-4" />
         <MessageCircle size={20} className="text-brand-green" />
-        <span>LINE {line}件</span>
+        <span>LINE公式 {line}件</span>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-gray">
         <div className="h-full rounded-full bg-brand-green" style={{ width: `${progress * 100}%` }} />
