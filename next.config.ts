@@ -11,6 +11,11 @@ const nextConfig: NextConfig = {
   // 静的エクスポート（SSG）。サーバーランタイムを持たないため、秘密鍵を扱う処理は
   // すべて外部（Supabase Edge Function）に置く。詳細は移行計画のPhase 0参照。
   output: "export",
+  // trailingSlash:true でルートごとに route/index.html を出力する。
+  // デフォルト(false)だと route.html のみが生成され、GitHub Pages等の
+  // 静的ホスティングで "/route/"（末尾スラッシュ付き）に直接アクセスすると
+  // route/index.html が存在せず404になる。
+  trailingSlash: true,
   images: {
     unoptimized: true,
   },
