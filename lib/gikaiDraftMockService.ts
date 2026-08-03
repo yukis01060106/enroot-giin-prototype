@@ -11,10 +11,27 @@ export interface GikaiAnswerSimulation {
   rebuttal: string;
 }
 
+/**
+ * 記録メモの文章から「テーマ」らしい短い語句を抜き出す。以前はここで
+ * `content.slice(0, 24) + "…"` のように文字列を丸ごと切り詰めていたため、
+ * 省略記号（…）付きの断片がそのままthemeの値として設定され、最終的な
+ * 通告書の件名（「{theme}について」）まで「…について」という壊れた文言が
+ * 流れ込んでいた。record_flow等の「〜について、一般質問で取り上げたい」
+ * という定型的な言い回しを取り除き、値そのものを短くする（表示上の省略は
+ * CSS側のtruncateに任せ、文字列に「…」を埋め込まない）。
+ */
+function extractThemeFromRecord(content: string): string {
+  let theme = content.trim().replace(/[。.]+$/, "");
+  theme = theme.replace(/[、,]?\s*(を|について)?\s*(次回の)?(一般質問|議会)で(取り上げたい|質問したい|取り上げる|質問する)$/, "");
+  theme = theme.replace(/[をに]?ついて$/, "");
+  theme = theme.trim();
+  return theme.length > 0 ? theme : content.trim();
+}
+
 export function suggestThemes(records: RecordModel[]): string[] {
   const fromRecords = records
     .filter((r) => r.categories.includes("question"))
-    .map((r) => (r.content.length > 24 ? `${r.content.slice(0, 24)}…` : r.content));
+    .map((r) => extractThemeFromRecord(r.content));
   const defaults = ["子育て支援の拡充", "高齢者の移動支援", "防災体制の強化", "空き家対策"];
   return [...fromRecords, ...defaults].slice(0, 5);
 }

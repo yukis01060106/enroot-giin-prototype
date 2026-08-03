@@ -2,10 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Receipt } from "lucide-react";
 import { useAppStore, planTierLabels } from "@/store/appStore";
 import { planCatalog } from "@/lib/planCatalog";
 import { formatYen } from "@/lib/currencyFormat";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 type BillTo = "individual" | "council";
 
@@ -31,6 +32,29 @@ export default function InvoicePage() {
   const taxIncluded = taxExcluded + tax;
   const invoiceNo = `INV-${period.year}${String(period.month + 1).padStart(2, "0")}-${planTier.toUpperCase()}`;
   const billToName = billTo === "individual" ? profile.displayName : profile.councilName;
+
+  // フリープランは無料のため請求は発生しない。エントリボタン側（/settings/plan）は
+  // 非表示にしているが、URL直接アクセスでも¥0の体裁だけ整った請求書が生成されない
+  // よう、ページ自体でもガードする。
+  if (planTier === "free") {
+    return (
+      <div className="flex h-full flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
+          <button onClick={() => router.push("/settings/plan")} aria-label="戻る" className="rounded-full p-2">
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-lg font-bold">請求書</h1>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4">
+          <EmptyState
+            icon={Receipt}
+            message="フリープランは無料のため請求書はありません"
+            actionHint="有料プランに変更すると、ここから請求書を発行できます"
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">

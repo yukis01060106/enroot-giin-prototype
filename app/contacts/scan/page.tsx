@@ -132,7 +132,7 @@ export default function ContactScanPage() {
             {usedRealOcr ? (
               <div className="flex items-start gap-2 rounded-input bg-brand-green/10 p-3 text-sm text-brand-green">
                 <Sparkles size={16} className="mt-0.5 shrink-0" />
-                <span>AIが名刺の文字を読み取り、自動入力しました。内容を確認してください。</span>
+                <span>AIが名刺の文字を読み取り、自動入力しました。これはAIの生成です。最終的な内容はご自身でご確認ください。</span>
               </div>
             ) : (
               <div className="flex items-start gap-2 rounded-input bg-warning/10 p-3 text-sm text-warning">

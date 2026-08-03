@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter, type Viseme } from "@/lib/useSpeakingCharacter";
 import { withBasePath } from "@/lib/basePath";
@@ -8,11 +9,26 @@ import { withBasePath } from "@/lib/basePath";
 /**
  * Phase 2a単体動作確認用ページ。チャット/バックエンドに一切依存せず、
  * ローカルテキスト＋ブラウザTTSだけでキャラクターの口パクを確認できる。
+ *
+ * 開発者向けデバッグツールであり、アプリのデザインシステム（ヘッダー・
+ * ボトムナビ等）にも従っていないため、本番ビルドでは公開しない
+ * （`npm run dev` のローカル開発時のみ表示する）。
  */
 export default function DevCharacterPage() {
   const { isSpeaking, viseme, speak, stop, supported } = useSpeakingCharacter();
   const [manualViseme, setManualViseme] = useState<Viseme>("closed");
   const [manualMode, setManualMode] = useState(false);
+
+  if (process.env.NODE_ENV === "production") {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
+        <p className="text-text-secondary">このページはご利用いただけません。</p>
+        <Link href="/" className="font-semibold text-primary-blue">
+          ホームへ戻る
+        </Link>
+      </main>
+    );
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-4 p-6">

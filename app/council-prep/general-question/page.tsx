@@ -96,7 +96,8 @@ export default function GeneralQuestionPage() {
                 <button
                   key={c}
                   onClick={() => setTheme(c)}
-                  className={`rounded-chip px-3 py-1.5 text-sm font-semibold ${
+                  title={c}
+                  className={`max-w-full truncate rounded-chip px-3 py-1.5 text-sm font-semibold ${
                     theme === c ? "bg-brand-green text-white" : "bg-white text-text-secondary shadow-card"
                   }`}
                 >

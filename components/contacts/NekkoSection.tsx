@@ -184,7 +184,7 @@ export function NekkoSection() {
       {joined ? <NekkoMembershipCard /> : <NekkoJoinCard onJoin={handleJoin} />}
 
       <section>
-        <h2 className="mb-2 font-bold">📅 次回のねっこの会</h2>
+        <h2 className="mb-2 text-lg font-bold">次回のねっこの会</h2>
         <div className="rounded-card bg-gradient-primary p-4 shadow-raised text-white">
           <p className="text-lg font-bold">{formatMDWeekdayTime(meetupAt)}〜</p>
           <p className="mt-1 text-sm text-white/70">テーマ：{theme}</p>
@@ -210,7 +210,7 @@ export function NekkoSection() {
 
       {joined && (
         <section>
-          <h2 className="mb-2 font-bold">💬 前回のおしゃべりメモ</h2>
+          <h2 className="mb-2 text-lg font-bold">前回のおしゃべりメモ</h2>
           <div className="rounded-card bg-white p-3 shadow-card">
             前回は視察報告書のまとめ方が話題になりました。他市の事例をどう一般質問につなげるか、具体的な書き方を持ち寄る流れになっています。
           </div>
@@ -218,7 +218,7 @@ export function NekkoSection() {
       )}
 
       <section>
-        <h2 className="mb-2 font-bold">📋 過去のねっこの会</h2>
+        <h2 className="mb-2 text-lg font-bold">過去のねっこの会</h2>
         <div className="flex flex-col gap-2">
           {pastMeetups(meetupAt).map((m) => (
             <div

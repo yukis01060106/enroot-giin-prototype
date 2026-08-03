@@ -60,6 +60,15 @@ interface AppState {
   profile: UserProfileModel;
   gikaiTemplates: GikaiTemplateModel[];
   /**
+   * 投票日・公示日としてカレンダー登録された予定だけを別途保持し、永続化する。
+   * schedules自体は他のモックデータ同様アプリ再読み込みのたびにリセットされるが、
+   * 投票日・公示日はSNS投稿ブロックという実運用上の意味を持つため、
+   * プロフィールの投票日設定（永続化される）と同じくらい消えては困る情報。
+   * ハイドレーション完了後（useStoreHydrated）にschedulesへマージし直す。
+   */
+  specialSchedules: ScheduleModel[];
+  mergeSpecialSchedules: () => void;
+  /**
    * AI秘書チャットの会話履歴。以前はページのローカルstateだったため、タブを
    * 切り替えて秘書画面に戻るたびに会話が消え、挨拶と期限切れToDoの確認が
    * 毎回最初からやり直しになっていた。他の画面同様ストアに置くことで、
@@ -210,8 +219,12 @@ function seedData(profile: UserProfileModel) {
     new Date(now.getTime() + d * 86400000 + h * 3600000).toISOString();
   const atTime = (h: number, m: number) =>
     new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString();
-  const atTimeOffset = (d: number, h: number) =>
-    new Date(now.getTime() + d * 86400000 + h * 3600000).toISOString();
+  // 「d日後/前の、決まった時刻」を返す。かつてのatTimeOffset(d,h)は「今の時刻+h時間」を
+  // 計算していたため、アプリを開く時刻によって深夜の予定が生成される不具合があった
+  // （例: 23時台に開くと「+2時間」で翌々日の1時台になる）。時刻を固定するatTimeと
+  // 同じ考え方でd日先/前にずらす。
+  const atDayOffsetTime = (d: number, h: number, m: number) =>
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + d, h, m).toISOString();
   const clampDay = (offset: number) =>
     new Date(now.getFullYear(), now.getMonth(), Math.min(Math.max(now.getDate() - offset, 1), now.getDate())).toISOString();
 
@@ -283,16 +296,16 @@ function seedData(profile: UserProfileModel) {
     {
       id: "s4",
       title: "住民相談（鈴木様）",
-      startAt: atTimeOffset(3, 2),
-      endAt: atTimeOffset(3, 3),
+      startAt: atDayOffsetTime(3, 14, 0),
+      endAt: atDayOffsetTime(3, 15, 0),
       meetingProvider: "zoom",
       meetingUrl: "https://zoom.us/j/8213456789",
     },
     {
       id: "s5",
       title: "ねっこの会 前回定例",
-      startAt: atTimeOffset(-25, 0),
-      endAt: atTimeOffset(-25, 1),
+      startAt: atDayOffsetTime(-25, 19, 30),
+      endAt: atDayOffsetTime(-25, 20, 30),
       meetingProvider: "google_meet",
       meetingUrl: "https://meet.google.com/xyz-uvwx-rst",
     },
@@ -406,6 +419,14 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       ...seedData(defaultProfile),
+      // 永続化された値でハイドレーション後に上書きされる前提の初期値（nekkoRsvpFor等と同じ扱い）。
+      specialSchedules: [],
+      mergeSpecialSchedules: () =>
+        set((state) => {
+          const existingIds = new Set(state.schedules.map((s) => s.id));
+          const toAdd = state.specialSchedules.filter((s) => !existingIds.has(s.id));
+          return toAdd.length > 0 ? { schedules: [...state.schedules, ...toAdd] } : {};
+        }),
       onboardingComplete: false,
       hasOpenedHome: false,
       completeOnboarding: () => set({ onboardingComplete: true }),
@@ -444,6 +465,7 @@ export const useAppStore = create<AppState>()(
           onboardingComplete: false,
           hasOpenedHome: false,
           nekkoRsvpFor: null,
+          specialSchedules: [],
         })),
 
       nekkoRsvpFor: null,
@@ -501,14 +523,23 @@ export const useAppStore = create<AppState>()(
       },
 
       addSchedule: ({ title, location, startAt, endAt, scheduleType }) =>
-        set((state) => ({
-          schedules: [
-            ...state.schedules,
-            { id: `manual_s_${Date.now()}`, title, location, startAt, endAt, scheduleType },
-          ],
-        })),
+        set((state) => {
+          const schedule = { id: `manual_s_${Date.now()}`, title, location, startAt, endAt, scheduleType };
+          return {
+            schedules: [...state.schedules, schedule],
+            // 投票日・公示日は次回起動後も消えては困るため、schedulesとは別に
+            // 永続化される専用の一覧にも同じエントリを残しておく。
+            specialSchedules: scheduleType
+              ? [...state.specialSchedules, schedule]
+              : state.specialSchedules,
+          };
+        }),
 
-      removeSchedule: (id) => set((state) => ({ schedules: state.schedules.filter((s) => s.id !== id) })),
+      removeSchedule: (id) =>
+        set((state) => ({
+          schedules: state.schedules.filter((s) => s.id !== id),
+          specialSchedules: state.specialSchedules.filter((s) => s.id !== id),
+        })),
 
       addMeeting: ({ title, provider, startAt, endAt }) => {
         const meeting: ScheduleModel = {
@@ -789,6 +820,7 @@ export const useAppStore = create<AppState>()(
         defaultMeetingProvider: state.defaultMeetingProvider,
         defaultMeetingDurationMin: state.defaultMeetingDurationMin,
         nekkoRsvpFor: state.nekkoRsvpFor,
+        specialSchedules: state.specialSchedules,
       }),
       // output:'export'でもnext buildはクライアントコンポーネントを一度サーバー側で
       // プリレンダーする。その際windowもlocalStorageも存在しないため、自動リハイドレーションを
@@ -829,7 +861,11 @@ export const useThisMonthExpenseTotal = () => useAppStore((s) => s.thisMonthExpe
 export function useStoreHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
-    const unsub = useAppStore.persist.onFinishHydration(() => setHydrated(true));
+    const unsub = useAppStore.persist.onFinishHydration(() => {
+      // 永続化されていた投票日・公示日を、再生成されたschedulesへ合流させる。
+      useAppStore.getState().mergeSpecialSchedules();
+      setHydrated(true);
+    });
     useAppStore.persist.rehydrate();
     return unsub;
   }, []);
