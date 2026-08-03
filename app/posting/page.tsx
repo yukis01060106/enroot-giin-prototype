@@ -2,10 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Star, Pencil, Sparkles, Share2, MessageCircle, Trash2, FileEdit } from "lucide-react";
+import { ArrowLeft, Star, Pencil, Sparkles, Share2, MessageCircle, Trash2, ChevronRight } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { PostingStatusCard } from "@/components/PostingStatusCard";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { Dialog } from "@/components/ui/Dialog";
 import { formatMD } from "@/lib/formatDate";
 
@@ -34,59 +33,64 @@ export default function PostingPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <h2 className="text-lg font-bold">下書き</h2>
-        <p className="text-sm text-text-secondary">AIが記録メモから発信候補を自動検出しました</p>
-        <div className="mt-2 flex flex-col gap-2">
-          {drafts.length === 0 ? (
-            <EmptyState icon={FileEdit} message="下書きはありません" actionHint="下の「美咲と一緒に作る」から作成できます" />
-          ) : (
-            drafts.map((d) => (
-              <div key={d.id} className="rounded-card bg-white p-3 shadow-card">
-                <button onClick={() => router.push(`/posting/edit?draftId=${d.id}`)} className="w-full text-left">
-                  <p className="line-clamp-3">{d.content}</p>
-                  {d.sourceSummary && (
-                    <p className="mt-1 text-xs text-text-secondary">元の記録: {d.sourceSummary}</p>
-                  )}
-                </button>
-                <div className="mt-2 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-text-secondary">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-blue/12 text-primary-blue">
-                      <Share2 size={11} />
-                    </span>
-                    {d.lineContent && (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-green/12 text-brand-green">
-                        <MessageCircle size={11} />
-                      </span>
-                    )}
-                    <span className="text-xs">{formatMD(new Date(d.createdAt))}作成</span>
-                  </div>
-                  <button
-                    onClick={() => setDeleteTargetId(d.id)}
-                    aria-label="下書きを削除"
-                    className="p-1 text-text-secondary"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
+        <h2 className="mb-4 text-xl font-bold">SNSで活動の報告をしましょう！</h2>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => router.push("/posting/create")}
+            className="flex items-center gap-3 rounded-card bg-gradient-brand-green p-4 text-left text-white shadow-raised"
+          >
+            <Sparkles size={28} />
+            <span className="flex-1 font-bold leading-snug">秘書の美咲といっしょに投稿文を作成する</span>
+            <ChevronRight size={20} />
+          </button>
+          <button
+            onClick={() => router.push("/posting/edit")}
+            className="flex items-center gap-3 rounded-card border-2 border-primary-blue bg-white p-4 text-left text-primary-blue shadow-card"
+          >
+            <Pencil size={26} />
+            <span className="flex-1 font-bold leading-snug">自分で投稿文を作成する</span>
+            <ChevronRight size={20} />
+          </button>
         </div>
 
-        <button
-          onClick={() => router.push("/posting/create")}
-          className="mt-2 flex h-tap-target w-full items-center justify-center gap-2 rounded-input bg-gradient-brand-green font-bold text-white"
-        >
-          <Sparkles size={18} />
-          美咲と一緒に作る
-        </button>
-        <button
-          onClick={() => router.push("/posting/edit")}
-          className="mt-2 flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-primary-blue font-semibold text-primary-blue"
-        >
-          <Pencil size={18} />
-          自分で書く
-        </button>
+        {drafts.length > 0 && (
+          <>
+            <h2 className="mb-2 mt-6 text-lg font-bold">下書き（{drafts.length}件）</h2>
+            <div className="flex flex-col gap-2">
+              {drafts.map((d) => (
+                <div key={d.id} className="rounded-card bg-white p-3 shadow-card">
+                  <button onClick={() => router.push(`/posting/edit?draftId=${d.id}`)} className="w-full text-left">
+                    <p className="line-clamp-3">{d.content}</p>
+                    {d.sourceSummary && (
+                      <p className="mt-1 text-xs text-text-secondary">元の記録: {d.sourceSummary}</p>
+                    )}
+                  </button>
+                  <div className="mt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-text-secondary">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-blue/12 text-primary-blue">
+                        <Share2 size={11} />
+                      </span>
+                      {d.lineContent && (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-green/12 text-brand-green">
+                          <MessageCircle size={11} />
+                        </span>
+                      )}
+                      <span className="text-xs">{formatMD(new Date(d.createdAt))}作成</span>
+                    </div>
+                    <button
+                      onClick={() => setDeleteTargetId(d.id)}
+                      aria-label="下書きを削除"
+                      className="p-1 text-text-secondary"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         <h2 className="mb-2 mt-6 text-lg font-bold">今月の発信状況</h2>
         <PostingStatusCard />
