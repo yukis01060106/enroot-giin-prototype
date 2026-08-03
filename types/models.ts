@@ -104,6 +104,8 @@ export interface UserProfileModel {
   reminderDays: number;
   /** パスワード変更画面の「最終更新」表示用。実際の認証機能は持たないプロトタイプのための表示専用フィールド。 */
   passwordChangedAt?: string;
+  /** ねっこの会デジタル会員証のサムネイル写真（data URL）。 */
+  avatarPhotoUrl?: string;
 }
 
 export const defaultProfile: UserProfileModel = {

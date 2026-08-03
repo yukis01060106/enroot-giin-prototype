@@ -40,6 +40,13 @@ export function themeFor(meetupAt: Date): string {
   return nekkoThemeExamples[index];
 }
 
+/** 会員証に表示する会員番号。氏名から決め打ちで導出する（本物の会員DBは持たない）。 */
+export function nekkoMemberNumber(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return String(100 + (hash % 900)).padStart(3, "0");
+}
+
 export function pastMeetups(nextMeetup: Date): { no: number; date: Date }[] {
   const list: { no: number; date: Date }[] = [];
   let cursor = new Date(nextMeetup.getFullYear(), nextMeetup.getMonth() - 1, 1);

@@ -1,12 +1,82 @@
 "use client";
 
-import { useState } from "react";
-import { Check } from "lucide-react";
-import { nextNekkoMeetup, themeFor, pastMeetups } from "@/lib/nekkoUtils";
+import { useRef, useState } from "react";
+import { Check, Camera } from "lucide-react";
+import { nextNekkoMeetup, themeFor, pastMeetups, nekkoMemberNumber } from "@/lib/nekkoUtils";
 import { formatMD, formatMDWeekdayTime } from "@/lib/formatDate";
 import { useAppStore } from "@/store/appStore";
 import { showToast } from "@/lib/notReady";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { fullNameWithHonorific } from "@/types/models";
+
+/** 会員証サムネイル。タップでファイル選択→即保存（別途保存ボタンは挟まない）。 */
+function MembershipCardAvatar({ photoUrl, onPick }: { photoUrl?: string; onPick: (dataUrl: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+    onPick(dataUrl);
+    showToast("会員証の写真を更新しました");
+  }
+
+  return (
+    <button
+      onClick={() => inputRef.current?.click()}
+      aria-label="会員証の写真を変更"
+      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-white/60 bg-white/15"
+    >
+      <input ref={inputRef} type="file" accept="image/*" onChange={onFileSelected} className="hidden" />
+      {photoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photoUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center text-white/70">
+          <Camera size={22} />
+        </span>
+      )}
+      <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand-green shadow-card">
+        <Camera size={11} />
+      </span>
+    </button>
+  );
+}
+
+function NekkoMembershipCard() {
+  const profile = useAppStore((s) => s.profile);
+  const updateProfile = useAppStore((s) => s.updateProfile);
+  const meetupAt = nextNekkoMeetup();
+
+  return (
+    <div className="relative overflow-hidden rounded-card bg-gradient-primary p-4 text-white shadow-raised">
+      <div className="pointer-events-none absolute -right-6 -top-10 h-28 w-28 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute -bottom-8 -left-4 h-20 w-20 rounded-full bg-white/10" />
+
+      <p className="relative text-xs font-semibold tracking-wide text-white/70">ねっこの会 デジタル会員証</p>
+
+      <div className="relative mt-3 flex items-center gap-4">
+        <MembershipCardAvatar
+          photoUrl={profile.avatarPhotoUrl}
+          onPick={(dataUrl) => updateProfile((p) => ({ ...p, avatarPhotoUrl: dataUrl }))}
+        />
+        <div className="min-w-0">
+          <p className="truncate text-lg font-bold">{fullNameWithHonorific(profile)}</p>
+          <p className="truncate text-sm text-white/80">{profile.councilName}</p>
+        </div>
+      </div>
+
+      <div className="relative mt-4 flex items-center justify-between border-t border-white/20 pt-3 text-xs text-white/70">
+        <span>会員No. {nekkoMemberNumber(profile.displayName)}</span>
+        <span>次回 {formatMD(meetupAt)}〜</span>
+      </div>
+    </div>
+  );
+}
 
 /** ご縁タブ内「ねっこの会」セクション。nekko_section_view.dart の移植。 */
 export function NekkoSection() {
@@ -31,6 +101,8 @@ export function NekkoSection() {
   return (
     <div className="flex flex-col gap-5 p-4">
       <h1 className="text-xl font-bold">ねっこの会 〜議員の和〜</h1>
+
+      <NekkoMembershipCard />
 
       <section>
         <h2 className="mb-2 font-bold">📅 次回のねっこの会</h2>
