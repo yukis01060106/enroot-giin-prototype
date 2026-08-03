@@ -14,6 +14,10 @@ export function formatMDWeekdayTime(d: Date): string {
   return `${d.getMonth() + 1}月${d.getDate()}日(${weekdayJa[d.getDay()]}) ${formatHM(d)}`;
 }
 
+export function formatMDWeekday(d: Date): string {
+  return `${d.getMonth() + 1}月${d.getDate()}日(${weekdayJa[d.getDay()]})`;
+}
+
 export function formatYMD(d: Date): string {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
 }

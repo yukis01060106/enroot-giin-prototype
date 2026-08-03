@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { SecretaryAvatar } from "@/components/SecretaryAvatar";
 import { greeting as buildGreeting } from "@/lib/secretaryService";
+import { formatHM, formatMDWeekday } from "@/lib/formatDate";
 import {
   useAppStore,
   usePendingTodos,
@@ -71,6 +72,7 @@ export default function HomePage() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
+        <p className="mb-2 text-sm font-semibold text-text-secondary">{formatMDWeekday(new Date())}</p>
         <Link
           href="/secretary"
           className="flex gap-3 rounded-card bg-white p-4 shadow-card"
@@ -81,6 +83,31 @@ export default function HomePage() {
             <p className="mt-1.5 font-bold text-brand-green">美咲に相談する →</p>
           </div>
         </Link>
+
+        {todaySchedules.length > 0 && (
+          <>
+            <div className="mb-2 mt-5 flex items-center justify-between">
+              <h2 className="text-lg font-bold">今日の予定</h2>
+              <Link href="/calendar" className="text-sm text-primary-blue">
+                すべて見る
+              </Link>
+            </div>
+            <div className="divide-y divide-neutral-gray rounded-card bg-white shadow-card">
+              {todaySchedules.slice(0, 3).map((s) => (
+                <Link key={s.id} href="/calendar" className="flex items-center gap-3 px-4 py-3">
+                  <span className="w-11 shrink-0 text-sm font-bold text-primary-blue">
+                    {formatHM(new Date(s.startAt))}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">{s.title}</p>
+                    {s.location && <p className="truncate text-xs text-text-secondary">{s.location}</p>}
+                  </div>
+                  {s.meetingUrl && <Video size={16} className="shrink-0 text-accent-indigo" />}
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
 
         <h2 className="mb-2 mt-5 text-lg font-bold">できること</h2>
         <div className="grid grid-cols-2 gap-3">
@@ -121,7 +148,7 @@ export default function HomePage() {
             </div>
             <div className="divide-y divide-neutral-gray rounded-card bg-white shadow-card">
               {pendingTodos.map((t) => (
-                <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+                <Link key={t.id} href="/todo" className="flex items-center gap-3 px-4 py-3">
                   <Circle size={20} className="shrink-0 text-text-secondary" />
                   <div className="min-w-0">
                     <p className="truncate">{t.title}</p>
@@ -131,10 +158,10 @@ export default function HomePage() {
                       </p>
                     )}
                   </div>
-                </div>
+                </Link>
               ))}
               {reminderPersons.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <Link key={p.id} href={`/contacts?id=${p.id}`} className="flex items-center gap-3 px-4 py-3">
                   <Clock size={20} className="shrink-0 text-warning" />
                   <div className="min-w-0">
                     <p className="truncate">{p.name}さんに連絡</p>
@@ -142,7 +169,7 @@ export default function HomePage() {
                       最終接触から{daysSinceLastContact(p)}日
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </>
