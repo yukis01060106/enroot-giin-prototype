@@ -44,7 +44,7 @@ export function themeFor(meetupAt: Date): string {
 export function nekkoMemberNumber(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return String(100 + (hash % 900)).padStart(3, "0");
+  return `NK-${String(hash % 1_000_000).padStart(6, "0")}`;
 }
 
 export function pastMeetups(nextMeetup: Date): { no: number; date: Date }[] {

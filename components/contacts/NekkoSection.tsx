@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Check, Camera } from "lucide-react";
+import { Check, Camera, Sprout } from "lucide-react";
 import { nextNekkoMeetup, themeFor, pastMeetups, nekkoMemberNumber } from "@/lib/nekkoUtils";
 import { formatMD, formatMDWeekdayTime } from "@/lib/formatDate";
 import { useAppStore } from "@/store/appStore";
@@ -29,19 +29,20 @@ function MembershipCardAvatar({ photoUrl, onPick }: { photoUrl?: string; onPick:
     <button
       onClick={() => inputRef.current?.click()}
       aria-label="会員証の写真を変更"
-      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 border-white/60 bg-white/15"
+      className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-2 border-white/70 bg-white/15 shadow-card"
     >
       <input ref={inputRef} type="file" accept="image/*" onChange={onFileSelected} className="hidden" />
       {photoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={photoUrl} alt="" className="h-full w-full object-cover" />
       ) : (
-        <span className="flex h-full w-full items-center justify-center text-white/70">
-          <Camera size={22} />
+        <span className="flex h-full w-full flex-col items-center justify-center gap-1 text-white/80">
+          <Camera size={26} />
+          <span className="text-[10px] font-semibold">写真を追加</span>
         </span>
       )}
-      <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-white text-brand-green shadow-card">
-        <Camera size={11} />
+      <span className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-brand-green shadow-card">
+        <Camera size={13} />
       </span>
     </button>
   );
@@ -53,26 +54,41 @@ function NekkoMembershipCard() {
   const meetupAt = nextNekkoMeetup();
 
   return (
-    <div className="relative overflow-hidden rounded-card bg-gradient-primary p-4 text-white shadow-raised">
-      <div className="pointer-events-none absolute -right-6 -top-10 h-28 w-28 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute -bottom-8 -left-4 h-20 w-20 rounded-full bg-white/10" />
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-blue via-primary-blue to-brand-green p-5 text-white shadow-raised">
+      <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute inset-y-0 right-10 w-24 -skew-x-12 bg-white/5" />
 
-      <p className="relative text-xs font-semibold tracking-wide text-white/70">ねっこの会 デジタル会員証</p>
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <Sprout size={17} />
+          <span className="text-xs font-bold tracking-[0.15em]">ねっこの会</span>
+        </div>
+        <span className="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-bold tracking-widest">
+          MEMBER CARD
+        </span>
+      </div>
 
-      <div className="relative mt-3 flex items-center gap-4">
+      <div className="relative mt-5 flex items-center gap-4">
         <MembershipCardAvatar
           photoUrl={profile.avatarPhotoUrl}
           onPick={(dataUrl) => updateProfile((p) => ({ ...p, avatarPhotoUrl: dataUrl }))}
         />
         <div className="min-w-0">
-          <p className="truncate text-lg font-bold">{fullNameWithHonorific(profile)}</p>
-          <p className="truncate text-sm text-white/80">{profile.councilName}</p>
+          <p className="truncate text-2xl font-bold">{fullNameWithHonorific(profile)}</p>
+          <p className="truncate text-sm text-white/85">{profile.councilName}</p>
         </div>
       </div>
 
-      <div className="relative mt-4 flex items-center justify-between border-t border-white/20 pt-3 text-xs text-white/70">
-        <span>会員No. {nekkoMemberNumber(profile.displayName)}</span>
-        <span>次回 {formatMD(meetupAt)}〜</span>
+      <div className="relative mt-5 flex items-end justify-between border-t border-white/25 pt-3">
+        <div>
+          <p className="text-[10px] tracking-widest text-white/60">MEMBER NO.</p>
+          <p className="font-mono text-base tracking-wider">{nekkoMemberNumber(profile.displayName)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] tracking-widest text-white/60">次回開催</p>
+          <p className="text-sm font-semibold">{formatMD(meetupAt)}〜</p>
+        </div>
       </div>
     </div>
   );
