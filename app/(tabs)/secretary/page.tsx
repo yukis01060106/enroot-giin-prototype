@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Mic, Volume2, VolumeX, Check, X, Loader2 } from "lucide-react";
+import { Send, Mic, Volume2, VolumeX, Check, X, Loader2, Calendar, ListTodo, IdCard } from "lucide-react";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter } from "@/lib/useSpeakingCharacter";
 import { greeting, quickMenuReply, freeformReply, overdueTodoCheckinMessage } from "@/lib/secretaryService";
-import { useAppStore, useOverdueTodos } from "@/store/appStore";
+import { useAppStore } from "@/store/appStore";
 import { withBasePath } from "@/lib/basePath";
-import type { ChatMessageModel, TodoModel } from "@/types/models";
+import type { ChatMessageModel } from "@/types/models";
 
-const quickMenuItems = ["今日の予定", "ToDo", "名刺管理"];
+const quickMenuItems = [
+  { label: "今日の予定", icon: Calendar },
+  { label: "ToDo", icon: ListTodo },
+  { label: "名刺管理", icon: IdCard },
+];
 const secretaryName = "藤堂 美咲";
 const mockChatTranscripts = [
   "今日の予定を教えて",
@@ -17,26 +21,31 @@ const mockChatTranscripts = [
   "一般質問の準備について相談したい",
 ];
 
+/** チャットメッセージに、そのメッセージ発端のToDo確認チップを紐付けて保持する
+ * （chipsをメッセージ一覧の末尾に別枠で表示すると、後から続く会話の下に
+ * 取り残されて何に対する確認か分からなくなるため、発端のメッセージ直下に
+ * 固定表示する）。 */
+type PendingCheckin = { id: string; title: string };
+type LocalMessage = ChatMessageModel & { pendingCheckins?: PendingCheckin[] };
+
 function formatTime(iso: string) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 export default function SecretaryPage() {
-  const [messages, setMessages] = useState<ChatMessageModel[]>([]);
+  const [messages, setMessages] = useState<LocalMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   // 一旦デフォルトOFF（Google Cloud TTS未設定の環境ではブラウザ標準TTSの
   // 機械的な声が毎回自動再生されてしまうため）。スピーカーアイコンで手動ON可能。
   const [voiceEnabled, setVoiceEnabled] = useState(false);
-  const [checkinSent, setCheckinSent] = useState(false);
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceTranscribing, setVoiceTranscribing] = useState(false);
   const greeted = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isSpeaking, viseme, speak } = useSpeakingCharacter();
   const toggleTodo = useAppStore((s) => s.toggleTodo);
-  const overdueTodos = useOverdueTodos();
 
   useEffect(() => {
     if (greeted.current) return;
@@ -46,13 +55,23 @@ export default function SecretaryPage() {
     if (voiceEnabled) speak(text);
 
     // 期限切れのToDoがあれば、こちらから聞かれる前に美咲から確認してもらう。
+    // 確認チップはこのメッセージ自身にpendingCheckinsとして紐付けておき、後で
+    // どれだけ会話が続いても常にこの発言の直下に表示されるようにする
+    // （会話末尾に別枠で出すと、後続の会話に埋もれて何の確認か分からなくなるため）。
     const overdue = useAppStore.getState().overdueTodos();
     if (overdue.length > 0) {
       window.setTimeout(() => {
         const checkinText = overdueTodoCheckinMessage(overdue);
-        setMessages((prev) => [...prev, { role: "assistant", content: checkinText, createdAt: new Date().toISOString() }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: checkinText,
+            createdAt: new Date().toISOString(),
+            pendingCheckins: overdue.map((t) => ({ id: t.id, title: t.title })),
+          },
+        ]);
         if (voiceEnabled) speak(checkinText);
-        setCheckinSent(true);
       }, 1000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,7 +98,16 @@ export default function SecretaryPage() {
     pushAssistant(result.reply);
   }
 
-  function respondToCheckin(todo: TodoModel, done: boolean) {
+  function respondToCheckin(messageIndex: number, todo: PendingCheckin, done: boolean) {
+    // 応答したToDoだけをそのメッセージのpendingCheckinsから外す（他に確認待ちが
+    // 残っていればチップは表示され続ける）。
+    setMessages((prev) =>
+      prev.map((m, i) =>
+        i === messageIndex
+          ? { ...m, pendingCheckins: m.pendingCheckins?.filter((p) => p.id !== todo.id) }
+          : m
+      )
+    );
     if (done) {
       toggleTodo(todo.id);
       setMessages((prev) => [
@@ -122,7 +150,7 @@ export default function SecretaryPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="relative h-[38vh] shrink-0">
+      <div className="relative h-[30vh] shrink-0">
         <SpeakingCharacter
           imageSrc={withBasePath("/images/secretary_misaki.png")}
           isSpeaking={isSpeaking}
@@ -147,68 +175,79 @@ export default function SecretaryPage() {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
-        <div className="flex flex-col gap-2">
-          {messages.map((m, i) => (
-            <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
-              <div
-                className={`max-w-[280px] whitespace-pre-wrap rounded-card px-3 py-2 text-sm ${
-                  m.role === "user" ? "bg-brand-green text-white" : "bg-white text-text-primary shadow-card"
-                }`}
-              >
-                {m.content}
+        <div className="flex flex-col gap-1">
+          {messages.map((m, i) => {
+            const next = messages[i + 1];
+            // 直後のメッセージが同じ話者・同じ分（HH:MM）なら、時刻表示は
+            // まとめて最後の1個だけに出す（毎回出すと視覚的なノイズになるため）。
+            const showTime = !next || next.role !== m.role || formatTime(next.createdAt) !== formatTime(m.createdAt);
+            return (
+              <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+                <div
+                  className={`max-w-[85%] whitespace-pre-wrap px-3 py-2 text-sm ${
+                    m.role === "user"
+                      ? "rounded-2xl rounded-br-md bg-brand-green text-white"
+                      : "rounded-2xl rounded-bl-md bg-white text-text-primary shadow-card"
+                  }`}
+                >
+                  {m.content}
+                </div>
+                {showTime && (
+                  <span className="mb-1 mt-0.5 text-[11px] text-text-secondary">{formatTime(m.createdAt)}</span>
+                )}
+
+                {m.pendingCheckins && m.pendingCheckins.length > 0 && (
+                  <div className="mt-1 flex w-full max-w-[85%] flex-col gap-2">
+                    {m.pendingCheckins.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between gap-2 rounded-card border border-warning/40 bg-white p-3 text-sm shadow-card"
+                      >
+                        <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            onClick={() => respondToCheckin(i, t, true)}
+                            aria-label="完了しました"
+                            className="flex items-center gap-1 rounded-chip bg-brand-green px-3 py-1.5 font-semibold text-white"
+                          >
+                            <Check size={16} />
+                            完了
+                          </button>
+                          <button
+                            onClick={() => respondToCheckin(i, t, false)}
+                            aria-label="まだです"
+                            className="flex items-center gap-1 rounded-chip border border-neutral-gray px-3 py-1.5 font-semibold text-text-secondary"
+                          >
+                            <X size={16} />
+                            まだ
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <span className="mt-0.5 text-[11px] text-text-secondary">{formatTime(m.createdAt)}</span>
-            </div>
-          ))}
+            );
+          })}
           {isTyping && (
             <div className="flex items-start">
-              <div className="rounded-card bg-white px-4 py-3 text-sm text-text-secondary shadow-card">
+              <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm text-text-secondary shadow-card">
                 ・・・
               </div>
-            </div>
-          )}
-
-          {checkinSent && overdueTodos.length > 0 && (
-            <div className="flex flex-col gap-2 pt-1">
-              {overdueTodos.map((t) => (
-                <div
-                  key={t.id}
-                  className="flex items-center justify-between gap-2 rounded-card border border-warning/40 bg-white p-3 text-sm shadow-card"
-                >
-                  <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      onClick={() => respondToCheckin(t, true)}
-                      aria-label="完了しました"
-                      className="flex items-center gap-1 rounded-chip bg-brand-green px-3 py-1.5 font-semibold text-white"
-                    >
-                      <Check size={16} />
-                      完了
-                    </button>
-                    <button
-                      onClick={() => respondToCheckin(t, false)}
-                      aria-label="まだです"
-                      className="flex items-center gap-1 rounded-chip border border-neutral-gray px-3 py-1.5 font-semibold text-text-secondary"
-                    >
-                      <X size={16} />
-                      まだ
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto border-t border-neutral-gray px-4 py-2">
-        {quickMenuItems.map((menu) => (
+        {quickMenuItems.map(({ label, icon: Icon }) => (
           <button
-            key={menu}
-            onClick={() => sendQuickMenu(menu)}
-            className="shrink-0 rounded-chip border border-brand-green px-3 py-1.5 text-sm font-semibold text-brand-green"
+            key={label}
+            onClick={() => sendQuickMenu(label)}
+            className="flex shrink-0 items-center gap-1.5 rounded-chip border border-brand-green px-3 py-1.5 text-sm font-semibold text-brand-green"
           >
-            {menu}
+            <Icon size={15} />
+            {label}
           </button>
         ))}
       </div>
