@@ -120,6 +120,14 @@ interface AppState {
     email?: string;
     memo?: string;
   }) => PersonModel;
+  updatePerson: (
+    id: string,
+    params: { name?: string; organization?: string; title?: string; phone?: string; email?: string; memo?: string }
+  ) => void;
+  removePerson: (id: string) => void;
+  /** 「そろそろ連絡」リマインドの唯一の解消手段。これがないと一度しきい値を
+   * 超えた人物が永久にリマインドされ続けてしまう。 */
+  logContact: (id: string) => void;
   addExpense: (params: {
     category: string;
     amount: number;
@@ -548,6 +556,30 @@ export const useAppStore = create<AppState>()(
       updatePersonTags: (personId, tags) =>
         set((state) => ({
           persons: state.persons.map((p) => (p.id === personId ? { ...p, tags } : p)),
+        })),
+
+      updatePerson: (id, params) =>
+        set((state) => ({
+          persons: state.persons.map((p) =>
+            p.id === id
+              ? {
+                  ...p,
+                  ...(params.name !== undefined && { name: params.name }),
+                  ...(params.organization !== undefined && { organization: params.organization }),
+                  ...(params.title !== undefined && { title: params.title }),
+                  ...(params.phone !== undefined && { phone: params.phone }),
+                  ...(params.email !== undefined && { email: params.email }),
+                  ...(params.memo !== undefined && { memo: params.memo }),
+                }
+              : p
+          ),
+        })),
+
+      removePerson: (id) => set((state) => ({ persons: state.persons.filter((p) => p.id !== id) })),
+
+      logContact: (id) =>
+        set((state) => ({
+          persons: state.persons.map((p) => (p.id === id ? { ...p, lastContactAt: new Date().toISOString() } : p)),
         })),
 
       addPerson: ({ name, organization, title, phone, email, memo }) => {

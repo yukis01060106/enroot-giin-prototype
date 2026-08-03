@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Phone, Mail, Pencil } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Pencil, PhoneCall } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { Dialog } from "@/components/ui/Dialog";
+import { PersonFormDialog } from "@/components/contacts/PersonFormDialog";
+import { showToast } from "@/lib/notReady";
 import { formatYMD } from "@/lib/formatDate";
 
 export function PersonDetail({ personId }: { personId: string }) {
@@ -19,8 +21,10 @@ export function PersonDetail({ personId }: { personId: string }) {
     [allRecords, personId]
   );
   const updatePersonTags = useAppStore((s) => s.updatePersonTags);
+  const logContact = useAppStore((s) => s.logContact);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const [draftTags, setDraftTags] = useState<string[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   if (!person) {
     return (
@@ -39,7 +43,10 @@ export function PersonDetail({ personId }: { personId: string }) {
         <button onClick={() => router.push("/contacts")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="truncate text-lg font-bold">{person.name}</h1>
+        <h1 className="flex-1 truncate text-lg font-bold">{person.name}</h1>
+        <button onClick={() => setEditDialogOpen(true)} aria-label="編集" className="rounded-full p-2">
+          <Pencil size={18} />
+        </button>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -110,10 +117,22 @@ export function PersonDetail({ personId }: { personId: string }) {
         )}
 
         <h2 className="mb-2 mt-5 text-lg font-bold">接触履歴</h2>
-        <div className="rounded-card bg-white p-3 shadow-card">
-          {person.lastContactAt
-            ? `最終接触: ${formatYMD(new Date(person.lastContactAt))}`
-            : "接触履歴はまだありません"}
+        <div className="flex items-center justify-between gap-2 rounded-card bg-white p-3 shadow-card">
+          <span>
+            {person.lastContactAt
+              ? `最終接触: ${formatYMD(new Date(person.lastContactAt))}`
+              : "接触履歴はまだありません"}
+          </span>
+          <button
+            onClick={() => {
+              logContact(person.id);
+              showToast("連絡日を今日に更新しました");
+            }}
+            className="flex shrink-0 items-center gap-1 rounded-chip bg-brand-green/10 px-3 py-1.5 text-sm font-semibold text-brand-green"
+          >
+            <PhoneCall size={14} />
+            連絡しました
+          </button>
         </div>
 
         <h2 className="mb-2 mt-5 text-lg font-bold">関連する相談（{records.length}件）</h2>
@@ -173,6 +192,8 @@ export function PersonDetail({ personId }: { personId: string }) {
           })}
         </div>
       </Dialog>
+
+      <PersonFormDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} editingPerson={person} />
     </div>
   );
 }

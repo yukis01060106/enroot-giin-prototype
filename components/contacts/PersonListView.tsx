@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Briefcase, Mic, Users } from "lucide-react";
+import { Briefcase, Mic, Users, Search, X, UserPlus } from "lucide-react";
 import { useAppStore, useReminderPersons, daysSinceLastContact } from "@/store/appStore";
 import { PersonTile } from "@/components/contacts/PersonTile";
+import { PersonFormDialog } from "@/components/contacts/PersonFormDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 /** 名刺管理タブ「名刺一覧」サブタブ。goen_view.dart の _buildPersonList 相当。 */
@@ -13,6 +14,8 @@ export function PersonListView() {
   const persons = useAppStore((s) => s.persons);
   const reminderPersons = useReminderPersons();
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -21,9 +24,14 @@ export function PersonListView() {
   }, [persons]);
 
   const sorted = useMemo(() => {
-    const filtered = activeTag ? persons.filter((p) => p.tags.includes(activeTag)) : persons;
+    const q = query.trim().toLowerCase();
+    const filtered = persons.filter((p) => {
+      if (activeTag && !p.tags.includes(activeTag)) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !(p.organization ?? "").toLowerCase().includes(q)) return false;
+      return true;
+    });
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name, "ja"));
-  }, [persons, activeTag]);
+  }, [persons, activeTag, query]);
 
   return (
     <div className="p-4">
@@ -43,10 +51,17 @@ export function PersonListView() {
           声で追加
         </button>
       </div>
+      <button
+        onClick={() => setAddDialogOpen(true)}
+        className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 text-sm font-semibold text-text-secondary"
+      >
+        <UserPlus size={15} />
+        または手動で追加
+      </button>
 
       {reminderPersons.length > 0 && (
         <>
-          <h2 className="mb-2 mt-5 text-lg font-bold">そろそろ連絡</h2>
+          <h2 className="mb-2 mt-3 text-lg font-bold">そろそろ連絡</h2>
           {reminderPersons.map((p) => (
             <PersonTile
               key={p.id}
@@ -59,8 +74,27 @@ export function PersonListView() {
         </>
       )}
 
+      <div className="relative mt-5">
+        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="名前・所属で検索"
+          className="h-tap-target w-full rounded-input bg-neutral-gray py-2 pl-10 pr-9 outline-none focus:ring-2 focus:ring-brand-green"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            aria-label="検索をクリア"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-text-secondary"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
       {allTags.length > 0 && (
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           <button
             onClick={() => setActiveTag(null)}
             className={`shrink-0 rounded-chip px-3 py-1.5 text-sm font-semibold ${
@@ -89,6 +123,8 @@ export function PersonListView() {
       ) : (
         sorted.map((p) => <PersonTile key={p.id} person={p} />)
       )}
+
+      <PersonFormDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} editingPerson={null} />
     </div>
   );
 }
