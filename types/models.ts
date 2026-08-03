@@ -143,6 +143,12 @@ export interface UserProfileModel {
   passwordChangedAt?: string;
   /** ねっこの会デジタル会員証のサムネイル写真（data URL）。 */
   avatarPhotoUrl?: string;
+  /**
+   * ねっこの会に入会した日時（ISO 8601）。未設定＝未入会。
+   * 未入会の間は会員証の位置に入会案内カードを表示し、入会すると
+   * 会員番号が発行されたデジタル会員証に切り替わる。
+   */
+  nekkoMemberSince?: string;
   /** 経費の費目プリセット。未設定はgeneric扱い。 */
   expenseCategoryPreset?: ExpenseCategoryPresetKey;
   /** expenseCategoryPreset==="custom"の場合の費目一覧。 */

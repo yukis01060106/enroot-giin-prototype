@@ -47,11 +47,25 @@ export function nekkoMemberNumber(name: string): string {
   return `NK-${String(hash % 1_000_000).padStart(6, "0")}`;
 }
 
+// 第1回の開催月（固定の起点）。以前は過去の回を「5, 4, 3」と決め打ちしていたため、
+// アプリを開く月が変わっても表示が5/4/3のまま動かず、実際の開催回数とずれていく
+// バグがあった（参加者に確認されやすい数字なので実績と揃える）。この起点からの
+// 月数で回数を算出することで、時間が経っても正しく回数が増えていくようにする。
+const NEKKO_FIRST_MEETUP_YEAR = 2026;
+const NEKKO_FIRST_MEETUP_MONTH = 2; // 0始まり: 2026年3月を第1回とする
+
+function meetingNumberFor(meetupDate: Date): number {
+  const monthsSinceFirst =
+    (meetupDate.getFullYear() - NEKKO_FIRST_MEETUP_YEAR) * 12 + (meetupDate.getMonth() - NEKKO_FIRST_MEETUP_MONTH);
+  return monthsSinceFirst + 1;
+}
+
 export function pastMeetups(nextMeetup: Date): { no: number; date: Date }[] {
   const list: { no: number; date: Date }[] = [];
   let cursor = new Date(nextMeetup.getFullYear(), nextMeetup.getMonth() - 1, 1);
   for (let i = 0; i < 3; i++) {
-    list.push({ no: 5 - i, date: nextNekkoMeetup(cursor) });
+    const date = nextNekkoMeetup(cursor);
+    list.push({ no: meetingNumberFor(date), date });
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
   }
   return list;

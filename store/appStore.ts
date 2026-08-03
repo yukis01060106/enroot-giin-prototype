@@ -101,6 +101,7 @@ interface AppState {
     startAt: string;
     endAt?: string;
   }) => void;
+  removeSchedule: (id: string) => void;
   addMeeting: (params: {
     title: string;
     provider: "google_meet" | "zoom";
@@ -487,6 +488,8 @@ export const useAppStore = create<AppState>()(
             { id: `manual_s_${Date.now()}`, title, location, startAt, endAt },
           ],
         })),
+
+      removeSchedule: (id) => set((state) => ({ schedules: state.schedules.filter((s) => s.id !== id) })),
 
       addMeeting: ({ title, provider, startAt, endAt }) => {
         const meeting: ScheduleModel = {

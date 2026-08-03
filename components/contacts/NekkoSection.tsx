@@ -7,7 +7,8 @@ import { formatMD, formatMDWeekdayTime } from "@/lib/formatDate";
 import { useAppStore } from "@/store/appStore";
 import { showToast } from "@/lib/notReady";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { fullNameWithHonorific } from "@/types/models";
+
+const NEKKO_SCHEDULE_TITLE = "ねっこの会 〜議員の和〜";
 
 /** 会員証サムネイル。タップでファイル選択→即保存（別途保存ボタンは挟まない）。 */
 function MembershipCardAvatar({ photoUrl, onPick }: { photoUrl?: string; onPick: (dataUrl: string) => void }) {
@@ -48,17 +49,50 @@ function MembershipCardAvatar({ photoUrl, onPick }: { photoUrl?: string; onPick:
   );
 }
 
+/** 会員証と同じ見た目の枠を共有するための土台（装飾円・斜めのシャイン等）。 */
+function MembershipCardFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-blue via-primary-blue to-brand-green p-5 text-white shadow-raised">
+      <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-white/10" />
+      <div className="pointer-events-none absolute inset-y-0 right-10 w-24 -skew-x-12 bg-white/5" />
+      {children}
+    </div>
+  );
+}
+
+/** 未入会状態。会員証の位置に表示する入会案内カード。 */
+function NekkoJoinCard({ onJoin }: { onJoin: () => void }) {
+  return (
+    <MembershipCardFrame>
+      <div className="relative flex items-center gap-1.5">
+        <Sprout size={17} />
+        <span className="text-xs font-bold tracking-[0.15em]">ねっこの会</span>
+      </div>
+      <p className="relative mt-3 text-lg font-bold leading-snug">
+        近隣自治体の若手議員同士の、気軽なオンライン座談会
+      </p>
+      <p className="relative mt-1.5 text-sm text-white/85">
+        入会するとデジタル会員証が発行され、開催案内が届くようになります。
+      </p>
+      <button
+        onClick={onJoin}
+        className="relative mt-4 flex h-tap-target w-full items-center justify-center gap-2 rounded-input bg-white font-bold text-brand-green"
+      >
+        <Sprout size={18} />
+        ねっこの会に参加する
+      </button>
+    </MembershipCardFrame>
+  );
+}
+
 function NekkoMembershipCard() {
   const profile = useAppStore((s) => s.profile);
   const updateProfile = useAppStore((s) => s.updateProfile);
   const meetupAt = nextNekkoMeetup();
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary-blue via-primary-blue to-brand-green p-5 text-white shadow-raised">
-      <div className="pointer-events-none absolute -right-10 -top-14 h-40 w-40 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-white/10" />
-      <div className="pointer-events-none absolute inset-y-0 right-10 w-24 -skew-x-12 bg-white/5" />
-
+    <MembershipCardFrame>
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Sprout size={17} />
@@ -75,7 +109,9 @@ function NekkoMembershipCard() {
           onPick={(dataUrl) => updateProfile((p) => ({ ...p, avatarPhotoUrl: dataUrl }))}
         />
         <div className="min-w-0">
-          <p className="truncate text-2xl font-bold">{fullNameWithHonorific(profile)}</p>
+          {/* 会員証の名義は氏名のみ（「先生」は呼びかけの言葉のため名義欄には入れない）。
+              肩書はこの下の議会名で足りる。 */}
+          <p className="truncate text-2xl font-bold">{profile.displayName}</p>
           <p className="truncate text-sm text-white/85">{profile.councilName}</p>
         </div>
       </div>
@@ -87,10 +123,10 @@ function NekkoMembershipCard() {
         </div>
         <div className="text-right">
           <p className="text-[10px] tracking-widest text-white/60">次回開催</p>
-          <p className="text-sm font-semibold">{formatMD(meetupAt)}〜</p>
+          <p className="text-sm font-semibold">{formatMD(meetupAt)}</p>
         </div>
       </div>
-    </div>
+    </MembershipCardFrame>
   );
 }
 
@@ -98,19 +134,46 @@ function NekkoMembershipCard() {
 export function NekkoSection() {
   const meetupAt = nextNekkoMeetup();
   const theme = themeFor(meetupAt);
+  const profile = useAppStore((s) => s.profile);
+  const updateProfile = useAppStore((s) => s.updateProfile);
   const nekkoRsvpFor = useAppStore((s) => s.nekkoRsvpFor);
   const setNekkoRsvp = useAppStore((s) => s.setNekkoRsvp);
+  const schedules = useAppStore((s) => s.schedules);
+  const addSchedule = useAppStore((s) => s.addSchedule);
+  const removeSchedule = useAppStore((s) => s.removeSchedule);
   const [detailOpen, setDetailOpen] = useState(false);
 
+  const joined = !!profile.nekkoMemberSince;
   const rsvped = nekkoRsvpFor === meetupAt.toISOString();
+  const existingSchedule = schedules.find(
+    (s) => s.title === NEKKO_SCHEDULE_TITLE && s.startAt === meetupAt.toISOString()
+  );
 
+  function handleJoin() {
+    updateProfile((p) => ({ ...p, nekkoMemberSince: new Date().toISOString() }));
+    showToast("ねっこの会に参加しました。会員証を発行しました");
+  }
+
+  // 「参加する」を押すだけでRSVPと同時にカレンダーへの予定登録まで完結させる
+  // （コミュニティに入ると段取りも勝手に整う、という体験にするため）。
+  // 取り消し時は追加した予定も一緒に消す（RSVPを取り消したのに予定だけ
+  // カレンダーに残る、という食い違いを避ける）。
   function toggleRsvp() {
     if (rsvped) {
       setNekkoRsvp(null);
+      if (existingSchedule) removeSchedule(existingSchedule.id);
       showToast("参加登録を取り消しました");
     } else {
       setNekkoRsvp(meetupAt.toISOString());
-      showToast("参加登録しました。当日はZoomリンクをお知らせします");
+      if (!existingSchedule) {
+        addSchedule({
+          title: NEKKO_SCHEDULE_TITLE,
+          location: "オンライン（Zoom）",
+          startAt: meetupAt.toISOString(),
+          endAt: new Date(meetupAt.getTime() + 3600000).toISOString(),
+        });
+      }
+      showToast("参加登録しました。カレンダーにも予定を追加しました");
     }
   }
 
@@ -118,7 +181,7 @@ export function NekkoSection() {
     <div className="flex flex-col gap-5 p-4">
       <h1 className="text-xl font-bold">ねっこの会 〜議員の和〜</h1>
 
-      <NekkoMembershipCard />
+      {joined ? <NekkoMembershipCard /> : <NekkoJoinCard onJoin={handleJoin} />}
 
       <section>
         <h2 className="mb-2 font-bold">📅 次回のねっこの会</h2>
@@ -145,12 +208,14 @@ export function NekkoSection() {
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-2 font-bold">💬 前回のおしゃべりメモ</h2>
-        <div className="rounded-card bg-white p-3 shadow-card">
-          前回のねっこの会では「視察で食べた美味しいもの自慢」が盛り上がりました。各地の名物グルメの話に花が咲き、次回は現地訪問の相談も出ています。
-        </div>
-      </section>
+      {joined && (
+        <section>
+          <h2 className="mb-2 font-bold">💬 前回のおしゃべりメモ</h2>
+          <div className="rounded-card bg-white p-3 shadow-card">
+            前回は視察報告書のまとめ方が話題になりました。他市の事例をどう一般質問につなげるか、具体的な書き方を持ち寄る流れになっています。
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-2 font-bold">📋 過去のねっこの会</h2>
