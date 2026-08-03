@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Mic, Loader2 } from "lucide-react";
+import { ArrowLeft, Mic, Camera, Loader2 } from "lucide-react";
 import { SuspenseBoundary } from "@/components/SuspenseBoundary";
 import { useAppStore } from "@/store/appStore";
 import { classify } from "@/lib/aiClassificationService";
@@ -15,17 +15,27 @@ const mockTranscripts = [
   "商工会議所の懇談会で、青年部の佐藤さんと名刺交換した。",
 ];
 
+const mockPhotoCaptions = [
+  "町内会の掲示板。イベント告知のポスターが破損していた。",
+  "陥没している歩道の様子。応急処置が必要そう。",
+  "懇談会の会場の様子。",
+];
+
 const allCategories: RecordCategory[] = ["consultation", "person", "question", "expense", "todo", "schedule"];
 
-type Step = "voice" | "text" | "classification";
+type Step = "voice" | "text" | "photo" | "classification";
 
 function RecordFlowInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addRecord = useAppStore((s) => s.addRecord);
 
-  const [step, setStep] = useState<Step>(searchParams.get("mode") === "voice" ? "voice" : "text");
+  const initialMode = searchParams.get("mode");
+  const [step, setStep] = useState<Step>(
+    initialMode === "voice" ? "voice" : initialMode === "photo" ? "photo" : "text"
+  );
   const [content, setContent] = useState("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<RecordCategory>>(new Set());
   const [confidence, setConfidence] = useState<number | undefined>(undefined);
 
@@ -41,12 +51,13 @@ function RecordFlowInner() {
 
   function save() {
     if (selected.size === 0) return;
-    addRecord({ content, categories: [...selected], aiConfidence: confidence });
+    addRecord({ content, categories: [...selected], aiConfidence: confidence, photoUrl: photoUrl ?? undefined });
     router.push("/");
     showToast("できました！記録を保存しました。");
   }
 
-  const title = step === "voice" ? "音声メモ" : step === "text" ? "文字で入力" : "分類を確認";
+  const title =
+    step === "voice" ? "音声メモ" : step === "text" ? "文字で入力" : step === "photo" ? "写真を撮る" : "分類を確認";
 
   return (
     <div className="flex h-full flex-col">
@@ -58,10 +69,20 @@ function RecordFlowInner() {
       </header>
 
       {step === "voice" && <VoiceStep onTranscribed={(text) => { setStep("text"); setContent(text); }} />}
+      {step === "photo" && (
+        <PhotoStep
+          onCaptured={(url, caption) => {
+            setPhotoUrl(url);
+            setStep("text");
+            setContent(caption);
+          }}
+        />
+      )}
       {step === "text" && <TextStep initial={content} onNext={proceedToClassification} />}
       {step === "classification" && (
         <ClassificationStep
           content={content}
+          photoUrl={photoUrl}
           selected={selected}
           onToggle={(cat) =>
             setSelected((prev) => {
@@ -138,6 +159,59 @@ function VoiceStep({ onTranscribed }: { onTranscribed: (text: string) => void })
   );
 }
 
+function PhotoStep({ onCaptured }: { onCaptured: (photoUrl: string, caption: string) => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [processing, setProcessing] = useState(false);
+
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+    setProcessing(true);
+    // 写真そのものは実際に撮影/選択したものを使う。内容の説明文（キャプション）だけモック。
+    await new Promise((r) => setTimeout(r, 1200));
+    const caption = mockPhotoCaptions[Math.floor(Math.random() * mockPhotoCaptions.length)];
+    setProcessing(false);
+    onCaptured(dataUrl, caption);
+  }
+
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-8 p-6">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={onFileSelected}
+        className="hidden"
+      />
+      {processing ? (
+        <>
+          <Loader2 size={32} className="animate-spin text-brand-green" />
+          <p className="text-lg font-bold">内容を読み取っています…</p>
+        </>
+      ) : (
+        <>
+          <div className="flex h-40 w-40 items-center justify-center rounded-card border border-text-secondary bg-neutral-gray">
+            <Camera size={56} className="text-text-secondary" />
+          </div>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex h-tap-target w-60 items-center justify-center gap-2 rounded-input bg-brand-green font-bold text-white"
+          >
+            <Camera size={20} />
+            撮影する
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function TextStep({ initial, onNext }: { initial: string; onNext: (text: string) => void }) {
   const [text, setText] = useState(initial);
   return (
@@ -163,17 +237,23 @@ function TextStep({ initial, onNext }: { initial: string; onNext: (text: string)
 
 function ClassificationStep({
   content,
+  photoUrl,
   selected,
   onToggle,
   onSave,
 }: {
   content: string;
+  photoUrl: string | null;
   selected: Set<RecordCategory>;
   onToggle: (cat: RecordCategory) => void;
   onSave: () => void;
 }) {
   return (
     <div className="flex flex-1 flex-col p-4">
+      {photoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photoUrl} alt="" className="mb-3 h-40 w-full rounded-card object-cover shadow-card" />
+      )}
       <div className="rounded-card bg-white p-3 shadow-card">{content}</div>
       <p className="mb-3 mt-4 font-bold">AIが提案するカテゴリ（タップで変更できます）</p>
       <div className="grid grid-cols-2 gap-3">

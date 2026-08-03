@@ -78,6 +78,7 @@ interface AppState {
     content: string;
     categories: RecordCategory[];
     aiConfidence?: number;
+    photoUrl?: string;
   }) => void;
   addSchedule: (params: {
     title: string;
@@ -405,7 +406,7 @@ export const useAppStore = create<AppState>()(
       updateProfile: (update) =>
         set((state) => ({ profile: update(state.profile) })),
 
-      addRecord: ({ content, categories, aiConfidence }) => {
+      addRecord: ({ content, categories, aiConfidence, photoUrl }) => {
         const now = new Date();
         const id = `r_${now.getTime()}`;
         const record: RecordModel = {
@@ -413,6 +414,7 @@ export const useAppStore = create<AppState>()(
           content,
           categories,
           aiConfidence,
+          photoUrl,
           tags: [],
           consultationStatus: "none",
           createdAt: now.toISOString(),

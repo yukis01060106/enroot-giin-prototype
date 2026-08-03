@@ -87,6 +87,8 @@ export interface RecordModel {
   consultationStatus: ConsultationStatus;
   relatedPersonId?: string;
   createdAt: string;
+  /** 「写真を撮る」記録フローで撮影した画像（data URL）。 */
+  photoUrl?: string;
 }
 
 export interface UserProfileModel {

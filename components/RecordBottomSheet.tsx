@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { Mic, Edit, Camera } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { showToast } from "@/lib/notReady";
 
 export function RecordBottomSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter();
@@ -16,9 +15,9 @@ export function RecordBottomSheet({ open, onOpenChange }: { open: boolean; onOpe
     onOpenChange(false);
     router.push("/record?mode=text");
   }
-  function notReadyPhoto() {
+  function goPhoto() {
     onOpenChange(false);
-    showToast("写真入力はAPIキー設定後に有効になります（プロトタイプでは「文字で入力」をお試しください）");
+    router.push("/record?mode=photo");
   }
 
   return (
@@ -39,7 +38,7 @@ export function RecordBottomSheet({ open, onOpenChange }: { open: boolean; onOpe
           文字で入力
         </button>
         <button
-          onClick={notReadyPhoto}
+          onClick={goPhoto}
           className="flex h-tap-target items-center justify-center gap-3 rounded-input bg-primary-blue text-lg font-bold text-white"
         >
           <Camera size={28} />
