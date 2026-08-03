@@ -48,21 +48,37 @@ export function assessRisk(content: string): RiskAssessment {
  * 「美咲と一緒に作る」フロー用の下書き生成モック。
  * 本番ではClaude APIに元テキスト（メモ本文 or 対話内容）を渡して生成する想定だが、
  * 現段階ではテンプレートに当てはめるだけのモック。
+ *
+ * Facebook（フォーマルな活動報告）とLINE公式（登録者への親しみやすい一言）は
+ * 読み手も使われ方も違うため、同じ文面を使い回すのではなく、同じ元ネタから
+ * トーンの異なる2種類を生成する。
  */
-export function generateDraftFromMemo(memoContent: string): string {
-  const trimmed = memoContent.trim();
-  return (
-    `【活動報告】\n${trimmed}\n\n` +
-    "今後も現場の声を大切に、市政に取り組んでまいります。引き続きよろしくお願いいたします。"
-  );
+export interface PlatformDrafts {
+  facebook: string;
+  line: string;
 }
 
-export function generateDraftFromDialogue(topic: string, detail: string): string {
+export function generateDraftFromMemo(memoContent: string): PlatformDrafts {
+  const trimmed = memoContent.trim();
+  return {
+    facebook:
+      `【活動報告】\n${trimmed}\n\n` +
+      "今後も現場の声を大切に、市政に取り組んでまいります。引き続きよろしくお願いいたします。",
+    line: `みなさん、こんにちは😊\n\n${trimmed}\n\n` + "これからもみなさんの声を聞きながら頑張ります！",
+  };
+}
+
+export function generateDraftFromDialogue(topic: string, detail: string): PlatformDrafts {
   const trimmed = topic.trim();
   const detailPart = detail.trim();
-  return (
-    `【活動報告】\n本日は${trimmed}について活動してまいりました。\n` +
-    (detailPart ? `${detailPart}\n\n` : "\n") +
-    "皆さまからのお声を今後の活動にしっかり活かしてまいります。引き続きよろしくお願いいたします。"
-  );
+  return {
+    facebook:
+      `【活動報告】\n本日は${trimmed}について活動してまいりました。\n` +
+      (detailPart ? `${detailPart}\n\n` : "\n") +
+      "皆さまからのお声を今後の活動にしっかり活かしてまいります。引き続きよろしくお願いいたします。",
+    line:
+      `こんにちは😊\n\n今日は${trimmed}に行ってきました！\n` +
+      (detailPart ? `${detailPart}\n\n` : "\n") +
+      "またご報告しますね！",
+  };
 }

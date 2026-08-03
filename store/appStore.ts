@@ -127,7 +127,7 @@ interface AppState {
     photoUrl?: string;
   }) => void;
   publishPost: (params: { toFacebook: boolean; toLine: boolean; draftId?: string }) => void;
-  addPostDraft: (params: { content: string; sourceSummary?: string }) => PostDraftModel;
+  addPostDraft: (params: { content: string; lineContent?: string; sourceSummary?: string }) => PostDraftModel;
 
   // 派生ゲッター（Dartのgetterと同じくFlutter版は毎回計算、メモ化はしない）
   meetings: () => ScheduleModel[];
@@ -564,10 +564,11 @@ export const useAppStore = create<AppState>()(
           ],
         })),
 
-      addPostDraft: ({ content, sourceSummary }) => {
+      addPostDraft: ({ content, lineContent, sourceSummary }) => {
         const draft: PostDraftModel = {
           id: `pd_${Date.now()}`,
           content,
+          lineContent,
           sourceSummary,
           createdAt: new Date().toISOString(),
         };

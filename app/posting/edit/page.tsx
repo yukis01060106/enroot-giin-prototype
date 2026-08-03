@@ -21,25 +21,36 @@ function PostEditInner() {
   const draft = useAppStore((s) => (draftId ? s.postDrafts.find((d) => d.id === draftId) : undefined));
   const publishPost = useAppStore((s) => s.publishPost);
 
-  const [content, setContent] = useState(draft?.content ?? "");
+  // Facebook/LINE公式は読み手も文体も違うため、下書き生成時点から別々の文面を
+  // 持てるようにしている（PostDraftModel.content / lineContent）。ここでも
+  // 2つを独立したstateとして編集する。
+  const [facebookText, setFacebookText] = useState(draft?.content ?? "");
+  const [lineText, setLineText] = useState(draft?.lineContent ?? draft?.content ?? "");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [toFacebook, setToFacebook] = useState(true);
-  const [toLine, setToLine] = useState(false);
+  const [toLine, setToLine] = useState(!!draft?.lineContent);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [riskAcknowledged, setRiskAcknowledged] = useState(false);
   const [posting, setPosting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  const suggestedHashtags = useMemo(() => suggestHashtags(content), [content]);
-  const risk = useMemo(() => assessRisk(content), [content]);
+  const combinedText = `${toFacebook ? facebookText : ""}\n${toLine ? lineText : ""}`;
+  const suggestedHashtags = useMemo(() => suggestHashtags(combinedText), [combinedText]);
+  const risk = useMemo(() => assessRisk(combinedText), [combinedText]);
   const needsAck = risk.level !== "low";
-  const canSubmit = content.trim() !== "" && (toFacebook || toLine) && (!needsAck || riskAcknowledged);
+  const canSubmit =
+    (toFacebook ? facebookText.trim() !== "" : true) &&
+    (toLine ? lineText.trim() !== "" : true) &&
+    (toFacebook || toLine) &&
+    (!needsAck || riskAcknowledged);
 
-  const finalContent = useMemo(() => {
+  const tagSuffix = useMemo(() => {
     const tags = [...selectedTags].join(" ");
-    return tags ? `${content.trim()}\n\n${tags}` : content.trim();
-  }, [content, selectedTags]);
+    return tags ? `\n\n${tags}` : "";
+  }, [selectedTags]);
+  const finalFacebookContent = `${facebookText.trim()}${tagSuffix}`;
+  const finalLineContent = `${lineText.trim()}${tagSuffix}`;
 
   async function onPhotoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -72,17 +83,6 @@ function PostEditInner() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
-        <textarea
-          value={content}
-          onChange={(e) => {
-            setContent(e.target.value);
-            setRiskAcknowledged(false);
-          }}
-          rows={6}
-          placeholder="投稿する内容を入力してください"
-          autoFocus={!draft}
-          className="w-full rounded-input border border-neutral-gray bg-white p-3 outline-none focus:ring-2 focus:ring-brand-green"
-        />
         <input
           ref={fileInputRef}
           type="file"
@@ -92,7 +92,7 @@ function PostEditInner() {
           className="hidden"
         />
         {photoUrl ? (
-          <div className="relative mt-3">
+          <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={photoUrl} alt="" className="h-40 w-full rounded-input object-cover" />
             <button
@@ -106,14 +106,58 @@ function PostEditInner() {
         ) : (
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="mt-3 flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-neutral-gray font-semibold"
+            className="flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-neutral-gray font-semibold"
           >
             <ImageIcon size={18} />
             写真を添付
           </button>
         )}
 
+        <h2 className="mb-1 mt-4 font-bold">配信先・文面</h2>
+
+        <div className="rounded-card border-2 border-neutral-gray bg-white p-3">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={toFacebook} onChange={(e) => setToFacebook(e.target.checked)} />
+            <Share2 size={20} className="text-primary-blue" />
+            <span className="font-bold">Facebook</span>
+          </label>
+          {toFacebook && (
+            <textarea
+              value={facebookText}
+              onChange={(e) => {
+                setFacebookText(e.target.value);
+                setRiskAcknowledged(false);
+              }}
+              rows={5}
+              placeholder="Facebook向けの投稿文"
+              autoFocus={!draft}
+              className="mt-2 w-full rounded-input border border-neutral-gray bg-white p-3 outline-none focus:ring-2 focus:ring-brand-green"
+            />
+          )}
+        </div>
+
+        <div className="mt-3 rounded-card border-2 border-neutral-gray bg-white p-3">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={toLine} onChange={(e) => setToLine(e.target.checked)} />
+            <MessageCircle size={20} className="text-brand-green" />
+            <span className="font-bold">LINE公式</span>
+          </label>
+          {toLine && (
+            <textarea
+              value={lineText}
+              onChange={(e) => {
+                setLineText(e.target.value);
+                setRiskAcknowledged(false);
+              }}
+              rows={5}
+              placeholder="LINE公式向けの投稿文"
+              className="mt-2 w-full rounded-input border border-neutral-gray bg-white p-3 outline-none focus:ring-2 focus:ring-brand-green"
+            />
+          )}
+        </div>
+
         <h2 className="mb-2 mt-4 font-bold">おすすめハッシュタグ</h2>
+        <p className="mb-2 -mt-1 text-xs text-text-secondary">選ぶと両方の文面の末尾に追加されます</p>
         <div className="flex flex-wrap gap-2">
           {suggestedHashtags.map((tag) => {
             const selected = selectedTags.has(tag);
@@ -164,22 +208,10 @@ function PostEditInner() {
           )}
         </div>
 
-        <h2 className="mb-1 mt-4 font-bold">配信先</h2>
-        <label className="flex items-center gap-2 py-2">
-          <input type="checkbox" checked={toFacebook} onChange={(e) => setToFacebook(e.target.checked)} />
-          <Share2 size={20} className="text-primary-blue" />
-          Facebook
-        </label>
-        <label className="flex items-center gap-2 py-2">
-          <input type="checkbox" checked={toLine} onChange={(e) => setToLine(e.target.checked)} />
-          <MessageCircle size={20} className="text-brand-green" />
-          LINE公式
-        </label>
-
         <button
           onClick={() => setShowPreview(true)}
-          disabled={content.trim() === ""}
-          className="mt-2 flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-neutral-gray font-semibold disabled:opacity-40"
+          disabled={!canSubmit}
+          className="mt-4 flex h-tap-target w-full items-center justify-center gap-2 rounded-input border border-neutral-gray font-semibold disabled:opacity-40"
         >
           <Eye size={18} />
           投稿イメージを見る
@@ -195,7 +227,8 @@ function PostEditInner() {
 
       {showPreview && (
         <PostPreviewOverlay
-          content={finalContent}
+          facebookContent={finalFacebookContent}
+          lineContent={finalLineContent}
           photoUrl={photoUrl}
           toFacebook={toFacebook}
           toLine={toLine}
@@ -207,13 +240,15 @@ function PostEditInner() {
 }
 
 function PostPreviewOverlay({
-  content,
+  facebookContent,
+  lineContent,
   photoUrl,
   toFacebook,
   toLine,
   onClose,
 }: {
-  content: string;
+  facebookContent: string;
+  lineContent: string;
   photoUrl: string | null;
   toFacebook: boolean;
   toLine: boolean;
@@ -230,11 +265,25 @@ function PostPreviewOverlay({
       </header>
       <div className="flex-1 overflow-y-auto p-4">
         {toFacebook && (
-          <SocialCard icon={Share2} iconColor="bg-primary-blue" label="Facebook" content={content} authorName={authorName} photoUrl={photoUrl} />
+          <SocialCard
+            icon={Share2}
+            iconColor="bg-primary-blue"
+            label="Facebook"
+            content={facebookContent}
+            authorName={authorName}
+            photoUrl={photoUrl}
+          />
         )}
         {toLine && (
           <div className="mt-6">
-            <SocialCard icon={MessageCircle} iconColor="bg-brand-green" label="LINE公式" content={content} authorName={authorName} photoUrl={photoUrl} />
+            <SocialCard
+              icon={MessageCircle}
+              iconColor="bg-brand-green"
+              label="LINE公式"
+              content={lineContent}
+              authorName={authorName}
+              photoUrl={photoUrl}
+            />
           </div>
         )}
         <p className="mt-4 text-xs text-text-secondary">

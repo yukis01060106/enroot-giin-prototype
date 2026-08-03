@@ -125,7 +125,10 @@ export function fullNameWithHonorific(profile: UserProfileModel): string {
 
 export interface PostDraftModel {
   id: string;
+  /** Facebook向けの文面。 */
   content: string;
+  /** LINE公式向けの文面（プラットフォームごとにトーンを変えて生成する）。未指定ならFacebook向けと同じ。 */
+  lineContent?: string;
   sourceSummary?: string;
   createdAt: string;
 }

@@ -2,12 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { FileText, Sparkles } from "lucide-react";
+import { FileText, Sparkles, Share2, MessageCircle } from "lucide-react";
 import { WizardShell } from "@/components/gikai/WizardShell";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAppStore } from "@/store/appStore";
 import { recordCategoryLabels } from "@/types/models";
-import { generateDraftFromDialogue, generateDraftFromMemo } from "@/lib/postingAiService";
+import { generateDraftFromDialogue, generateDraftFromMemo, type PlatformDrafts } from "@/lib/postingAiService";
 import { formatMD } from "@/lib/formatDate";
 
 type Mode = "memo" | "dialogue";
@@ -33,7 +33,7 @@ export default function PostingCreatePage() {
   const [topic, setTopic] = useState("");
   const [detail, setDetail] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [generated, setGenerated] = useState("");
+  const [generated, setGenerated] = useState<PlatformDrafts | null>(null);
   const [sourceSummary, setSourceSummary] = useState<string | undefined>(undefined);
 
   const stepTitles =
@@ -46,7 +46,7 @@ export default function PostingCreatePage() {
     mode === "memo"
       ? "投稿のもとにするメモを選んでください。"
       : "今日の出来事を教えてください。私が投稿文の形に整えますね。",
-    "こんな下書きを作ってみました。内容を確認して、次の画面でご自身の言葉に調整してくださいね。",
+    "Facebook向けとLINE公式向け、それぞれの雰囲気に合わせて2種類作ってみました。内容を確認して、次の画面でご自身の言葉に調整してくださいね。",
   ];
 
   const canAdvance =
@@ -81,7 +81,8 @@ export default function PostingCreatePage() {
       }, 1200);
       return;
     }
-    const draft = addPostDraft({ content: generated, sourceSummary });
+    if (!generated) return;
+    const draft = addPostDraft({ content: generated.facebook, lineContent: generated.line, sourceSummary });
     router.push(`/posting/edit?draftId=${draft.id}`);
   }
 
@@ -176,8 +177,23 @@ export default function PostingCreatePage() {
         </div>
       )}
 
-      {step === 2 && (
-        <div className="whitespace-pre-wrap rounded-card bg-white p-4 shadow-card">{generated}</div>
+      {step === 2 && generated && (
+        <div className="flex flex-col gap-4">
+          <div className="rounded-card bg-white shadow-card">
+            <div className="flex items-center gap-2 rounded-t-card bg-primary-blue/10 px-3 py-2 font-bold text-primary-blue">
+              <Share2 size={16} />
+              Facebook向け
+            </div>
+            <p className="whitespace-pre-wrap p-4">{generated.facebook}</p>
+          </div>
+          <div className="rounded-card bg-white shadow-card">
+            <div className="flex items-center gap-2 rounded-t-card bg-brand-green/10 px-3 py-2 font-bold text-brand-green">
+              <MessageCircle size={16} />
+              LINE公式向け
+            </div>
+            <p className="whitespace-pre-wrap p-4">{generated.line}</p>
+          </div>
+        </div>
       )}
     </WizardShell>
   );
