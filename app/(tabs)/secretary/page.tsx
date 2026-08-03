@@ -26,7 +26,9 @@ export default function SecretaryPage() {
   const [messages, setMessages] = useState<ChatMessageModel[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  // 一旦デフォルトOFF（Google Cloud TTS未設定の環境ではブラウザ標準TTSの
+  // 機械的な声が毎回自動再生されてしまうため）。スピーカーアイコンで手動ON可能。
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [checkinSent, setCheckinSent] = useState(false);
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceTranscribing, setVoiceTranscribing] = useState(false);
