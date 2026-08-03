@@ -59,7 +59,9 @@ export default function SecretaryPage() {
     // （会話末尾に別枠で出すと、後続の会話に埋もれて何の確認か分からなくなるため）。
     const overdue = useAppStore.getState().overdueTodos();
     if (overdue.length > 0) {
+      window.setTimeout(() => setIsTyping(true), 400);
       window.setTimeout(() => {
+        setIsTyping(false);
         const checkinText = overdueTodoCheckinMessage(overdue);
         setMessages((prev) => [
           ...prev,
@@ -164,7 +166,8 @@ export default function SecretaryPage() {
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between rounded-b-[28px] bg-gradient-to-t from-black/55 to-transparent px-4 pb-3 pt-6">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-white">{secretaryName}</span>
-            <span className="rounded-chip bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
+            <span className="flex items-center gap-1 rounded-chip bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
               AI秘書
             </span>
           </div>
@@ -186,7 +189,10 @@ export default function SecretaryPage() {
             // まとめて最後の1個だけに出す（毎回出すと視覚的なノイズになるため）。
             const showTime = !next || next.role !== m.role || formatTime(next.createdAt) !== formatTime(m.createdAt);
             return (
-              <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+              <div
+                key={i}
+                className={`flex animate-message-in flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
+              >
                 <div
                   className={`max-w-[85%] whitespace-pre-wrap px-3 py-2 text-sm ${
                     m.role === "user"
@@ -234,7 +240,7 @@ export default function SecretaryPage() {
             );
           })}
           {isTyping && (
-            <div className="flex items-start">
+            <div className="flex animate-message-in items-start">
               <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-white px-4 py-3.5 shadow-card">
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-secondary [animation-delay:-0.3s]" />
                 <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-secondary [animation-delay:-0.15s]" />

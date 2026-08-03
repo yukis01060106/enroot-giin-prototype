@@ -105,6 +105,22 @@
   background-image: linear-gradient(135deg, var(--raw-light-green), var(--raw-brand-green));
 }
 
+/* 秘書チャットの新着メッセージ用フェードイン。「パッと切り替わる」のではなく
+   自然に現れる見た目にするための小さな演出。 */
+@utility animate-message-in {
+  animation: message-in 0.22s ease-out;
+}
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /*
  * @layer base に入れることで、Tailwindのユーティリティクラス（bg-primary-blue等）が
  * 優先されるようにする。レイヤー外の生CSSは詳細度に関係なく常にレイヤー内のCSSより
