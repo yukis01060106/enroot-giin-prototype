@@ -59,19 +59,6 @@ export function quickMenuReply(menu: string): string {
       const lines = todos.map((t) => `・${t.title}`).join("\n");
       return `未完了のやることはこちらです。\n${lines}`;
     }
-    case "名刺管理": {
-      const reminders = state.reminderPersons();
-      if (reminders.length === 0) return "しばらく連絡が途絶えている方は、今のところいらっしゃいませんよ。";
-      const lines = reminders
-        .map((p) => {
-          const days = p.lastContactAt
-            ? Math.floor((Date.now() - new Date(p.lastContactAt).getTime()) / 86400000)
-            : 999;
-          return `・${p.name}さん（最終接触から${days}日）`;
-        })
-        .join("\n");
-      return `そろそろご連絡してみてはいかがでしょうか。\n${lines}`;
-    }
     default:
       return "かしこまりました。";
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Mic, Volume2, VolumeX, Check, X, Loader2, Calendar, ListTodo, IdCard } from "lucide-react";
+import { Send, Mic, Volume2, VolumeX, Check, X, Loader2, Calendar, ListTodo } from "lucide-react";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter } from "@/lib/useSpeakingCharacter";
 import { greeting, quickMenuReply, freeformReply, overdueTodoCheckinMessage } from "@/lib/secretaryService";
@@ -12,7 +12,6 @@ import type { ChatMessageModel } from "@/types/models";
 const quickMenuItems = [
   { label: "今日の予定", icon: Calendar },
   { label: "ToDo", icon: ListTodo },
-  { label: "名刺管理", icon: IdCard },
 ];
 const secretaryName = "藤堂 美咲";
 const mockChatTranscripts = [
