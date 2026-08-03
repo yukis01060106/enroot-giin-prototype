@@ -155,6 +155,11 @@ export default function SecretaryPage() {
           isSpeaking={isSpeaking}
           viseme={viseme}
           className="h-full w-full rounded-b-[28px]"
+          // このページのコンテナは横長（30vh高×フル幅）で元画像（正方形）を縦方向に
+          // クロップして表示するため、SpeakingCharacterのデフォルト口位置
+          // （クロップなしの正方形表示・/dev-character用に校正した値）とはズレる。
+          // クロップ後の見え方に合わせて再校正した値をここで渡す。
+          mouth={{ top: "54%", left: "49%", width: "11%", height: "5%" }}
         />
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between rounded-b-[28px] bg-gradient-to-t from-black/55 to-transparent px-4 pb-3 pt-6">
           <div className="flex items-center gap-2">

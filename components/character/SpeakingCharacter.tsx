@@ -45,7 +45,7 @@ export function SpeakingCharacter({
 }: SpeakingCharacterProps) {
   return (
     <div className={`relative overflow-hidden ${className}`}>
-      <Image src={imageSrc} alt={alt} fill className="object-cover" priority />
+      <Image src={imageSrc} alt={alt} fill className="object-cover object-[50%_15%]" priority />
       <div
         aria-hidden
         className="absolute rounded-[50%] bg-[#7a3b3b] transition-all duration-150 ease-out"
