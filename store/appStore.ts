@@ -94,6 +94,8 @@ interface AppState {
   }) => ScheduleModel;
   addTodo: (params: { title: string; dueDate?: string; priority?: TodoPriority }) => void;
   toggleTodo: (id: string) => void;
+  updateTodo: (id: string, params: { title?: string; dueDate?: string | null; priority?: TodoPriority }) => void;
+  removeTodo: (id: string) => void;
   addBenchmarkAccount: (params: {
     name: string;
     platform: string;
@@ -486,6 +488,22 @@ export const useAppStore = create<AppState>()(
               : t
           ),
         })),
+
+      updateTodo: (id, params) =>
+        set((state) => ({
+          todos: state.todos.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  ...(params.title !== undefined && { title: params.title }),
+                  ...(params.dueDate !== undefined && { dueDate: params.dueDate ?? undefined }),
+                  ...(params.priority !== undefined && { priority: params.priority }),
+                }
+              : t
+          ),
+        })),
+
+      removeTodo: (id) => set((state) => ({ todos: state.todos.filter((t) => t.id !== id) })),
 
       addBenchmarkAccount: ({ name, platform, handle, note }) =>
         set((state) => ({
