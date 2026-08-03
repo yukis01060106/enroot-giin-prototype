@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
-import { ArrowLeft, Image as ImageIcon, Share2, MessageCircle, Eye, ListChecks, Loader2, X, Check, Ban } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Share2, MessageCircle, Eye, ListChecks, Copy, ExternalLink, X, Check, Ban } from "lucide-react";
 import { SuspenseBoundary } from "@/components/SuspenseBoundary";
 import { useAppStore } from "@/store/appStore";
 import { suggestHashtags } from "@/lib/postingAiService";
@@ -46,7 +46,6 @@ function PostEditInner() {
   const [toLine, setToLine] = useState(!!draft?.lineContent);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [posting, setPosting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
   const combinedText = `${toFacebook ? facebookText : ""}\n${toLine ? lineText : ""}`;
@@ -78,13 +77,25 @@ function PostEditInner() {
     e.target.value = "";
   }
 
-  async function publish() {
+  // FacebookはGraph APIが個人プロフィールへの投稿を許可しておらず（ページのみ）、
+  // LINE公式もアプリ内からの自動投稿には別途Messaging APIの契約・実装が要る。
+  // このアプリはあくまで文章を作るところまでを担い、実際の投稿はコピー＆貼り付けで
+  // 各プラットフォーム側に任せる（「投稿する」ボタンで実際に投稿されるかのような
+  // 誤解を避けるため）。
+  async function copyText(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(`${label}向けの文章をコピーしました`);
+    } catch {
+      showToast("コピーできませんでした。文章を選択してコピーしてください");
+    }
+  }
+
+  function markAsPosted() {
     if (!canSubmit) return;
-    setPosting(true);
-    await new Promise((r) => setTimeout(r, 900));
     publishPost({ toFacebook, toLine, draftId: draftId ?? undefined });
     router.push("/posting");
-    showToast("投稿しました");
+    showToast("投稿済みとして記録しました");
   }
 
   return (
@@ -93,7 +104,7 @@ function PostEditInner() {
         <button onClick={() => router.push("/posting")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-bold">投稿を編集</h1>
+        <h1 className="text-lg font-bold">投稿文を作成</h1>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
@@ -213,7 +224,7 @@ function PostEditInner() {
             投稿前チェックリスト
           </div>
           <p className="ml-8 mt-0.5 text-xs text-text-secondary">
-            すべて確認するとチェックが入り、投稿できるようになります
+            すべて確認すると、コピーや記録ができるようになります
           </p>
           <div className="mt-2 flex flex-col gap-2">
             {checklistItems.map((item) => {
@@ -253,12 +264,57 @@ function PostEditInner() {
           <Eye size={18} />
           投稿イメージを見る
         </button>
+
+        <div className="mt-3 flex flex-col gap-2">
+          {toFacebook && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => copyText(finalFacebookContent, "Facebook")}
+                disabled={!canSubmit}
+                className="flex h-tap-target flex-1 items-center justify-center gap-2 rounded-input border border-primary-blue font-semibold text-primary-blue disabled:opacity-40"
+              >
+                <Copy size={18} />
+                Facebook文をコピー
+              </button>
+              <button
+                onClick={() => window.open("https://www.facebook.com/", "_blank", "noopener,noreferrer")}
+                aria-label="Facebookを開く"
+                className="flex h-tap-target shrink-0 items-center justify-center rounded-input border border-neutral-gray px-3.5 text-text-secondary"
+              >
+                <ExternalLink size={18} />
+              </button>
+            </div>
+          )}
+          {toLine && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => copyText(finalLineContent, "LINE公式")}
+                disabled={!canSubmit}
+                className="flex h-tap-target flex-1 items-center justify-center gap-2 rounded-input border border-brand-green font-semibold text-brand-green disabled:opacity-40"
+              >
+                <Copy size={18} />
+                LINE公式文をコピー
+              </button>
+              <button
+                onClick={() => window.open("https://manager.line.biz/", "_blank", "noopener,noreferrer")}
+                aria-label="LINE公式アカウント管理画面を開く"
+                className="flex h-tap-target shrink-0 items-center justify-center rounded-input border border-neutral-gray px-3.5 text-text-secondary"
+              >
+                <ExternalLink size={18} />
+              </button>
+            </div>
+          )}
+        </div>
+        <p className="mt-2 text-center text-xs leading-relaxed text-text-secondary">
+          コピーした文章を、開いた画面に貼り付けて投稿してください
+        </p>
+
         <button
-          onClick={publish}
-          disabled={posting || !canSubmit}
+          onClick={markAsPosted}
+          disabled={!canSubmit}
           className="mt-3 flex h-tap-target w-full items-center justify-center rounded-input bg-brand-green font-bold text-white disabled:opacity-40"
         >
-          {posting ? <Loader2 size={20} className="animate-spin" /> : "投稿する"}
+          投稿済みとして記録する
         </button>
       </div>
 
