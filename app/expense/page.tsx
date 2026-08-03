@@ -2,12 +2,31 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { ArrowLeft, Camera, FileDown, Receipt, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ArrowLeft,
+  Camera,
+  FileDown,
+  Receipt,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+} from "lucide-react";
 import { useAppStore, monthlyExpenseBudget } from "@/store/appStore";
 import { formatYen } from "@/lib/currencyFormat";
 import { formatMD } from "@/lib/formatDate";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { PieChart, PieChartLegend } from "@/components/ui/PieChart";
+import { PieChart, PieChartLegend, colorForKey } from "@/components/ui/PieChart";
+import { Dialog } from "@/components/ui/Dialog";
+import { expenseCategories } from "@/types/models";
+import type { ExpenseModel } from "@/types/models";
+
+function toDateInputValue(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function categoryColor(category: string): string {
+  return colorForKey(category, expenseCategories as unknown as string[]);
+}
 
 export default function ExpensePage() {
   const router = useRouter();
@@ -17,6 +36,8 @@ export default function ExpensePage() {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseModel | null>(null);
 
   const isCurrentMonth = useMemo(() => {
     const now = new Date();
@@ -58,8 +79,23 @@ export default function ExpensePage() {
     });
   }
 
+  function jumpToCurrentMonth() {
+    setActiveCategory(null);
+    const now = new Date();
+    setPeriod({ year: now.getFullYear(), month: now.getMonth() });
+  }
+
+  function openAddDialog() {
+    setEditingExpense(null);
+    setDialogOpen(true);
+  }
+  function openEditDialog(expense: ExpenseModel) {
+    setEditingExpense(expense);
+    setDialogOpen(true);
+  }
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
         <button onClick={() => router.push("/")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
@@ -67,14 +103,28 @@ export default function ExpensePage() {
         <h1 className="text-lg font-bold">経費</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 pb-24">
         <div className="flex items-center justify-between rounded-card bg-white px-2 py-1.5 shadow-card">
           <button onClick={() => changeMonth(-1)} aria-label="前の月" className="p-2 text-text-secondary">
             <ChevronLeft size={20} />
           </button>
-          <span className="font-bold">
-            {period.year}年{period.month + 1}月{isCurrentMonth && "（今月）"}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-bold">
+              {period.year}年{period.month + 1}月
+            </span>
+            {isCurrentMonth ? (
+              <span className="rounded-chip bg-brand-green/10 px-2 py-0.5 text-xs font-semibold text-brand-green">
+                今月
+              </span>
+            ) : (
+              <button
+                onClick={jumpToCurrentMonth}
+                className="rounded-chip bg-neutral-gray px-2 py-0.5 text-xs font-semibold text-text-secondary"
+              >
+                今月に戻る
+              </button>
+            )}
+          </div>
           <button onClick={() => changeMonth(1)} aria-label="次の月" className="p-2 text-text-secondary">
             <ChevronRight size={20} />
           </button>
@@ -87,7 +137,7 @@ export default function ExpensePage() {
           </p>
           <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-neutral-gray">
             <div
-              className={`h-full rounded-full ${remaining >= 0 ? "bg-brand-green" : "bg-error"}`}
+              className={`h-full rounded-full transition-[width] ${remaining >= 0 ? "bg-brand-green" : "bg-error"}`}
               style={{ width: `${progress * 100}%` }}
             />
           </div>
@@ -96,21 +146,31 @@ export default function ExpensePage() {
           </p>
           {categories.length > 0 && (
             <div className="mt-4 flex items-start gap-4">
-              <PieChart data={byCategory} size={100} />
+              <PieChart data={byCategory} size={100} keyOrder={expenseCategories as unknown as string[]} />
               <div className="flex-1">
-                <PieChartLegend data={byCategory} />
+                <PieChartLegend data={byCategory} keyOrder={expenseCategories as unknown as string[]} />
               </div>
             </div>
           )}
         </div>
 
-        <button
-          onClick={() => router.push("/expense/scan")}
-          className="mt-4 flex h-tap-target w-full items-center justify-center gap-2 rounded-input bg-brand-green font-bold text-white"
-        >
-          <Camera size={20} />
-          レシートを撮影
-        </button>
+        <div className="mt-4 flex gap-2">
+          <button
+            onClick={() => router.push("/expense/scan")}
+            className="flex h-tap-target flex-1 items-center justify-center gap-2 rounded-input bg-brand-green font-bold text-white"
+          >
+            <Camera size={20} />
+            レシートを撮影
+          </button>
+          <button
+            onClick={openAddDialog}
+            aria-label="手入力で経費を追加"
+            className="flex h-tap-target items-center justify-center gap-2 rounded-input border border-primary-blue px-4 font-bold text-primary-blue"
+          >
+            <Plus size={20} />
+            手入力
+          </button>
+        </div>
 
         <div className="mb-2 mt-6 flex items-center justify-between">
           <h2 className="text-lg font-bold">経費一覧</h2>
@@ -137,10 +197,14 @@ export default function ExpensePage() {
               <button
                 key={c}
                 onClick={() => setActiveCategory(c)}
-                className={`shrink-0 rounded-chip px-3 py-1.5 text-sm font-semibold ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-chip px-3 py-1.5 text-sm font-semibold ${
                   activeCategory === c ? "bg-brand-green text-white" : "bg-white text-text-secondary shadow-card"
                 }`}
               >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: activeCategory === c ? "#ffffff" : categoryColor(c) }}
+                />
                 {c}
               </button>
             ))}
@@ -148,28 +212,207 @@ export default function ExpensePage() {
         )}
 
         {filtered.length === 0 ? (
-          <EmptyState icon={Receipt} message="この月の経費はまだありません" actionHint="上の「レシートを撮影」から記録してみましょう" />
+          <EmptyState
+            icon={Receipt}
+            message={
+              periodExpenses.length === 0
+                ? "この月の経費はまだありません"
+                : "この費目の経費はありません"
+            }
+            actionHint={periodExpenses.length === 0 ? "レシート撮影か手入力で記録してみましょう" : undefined}
+          />
         ) : (
           <div className="flex flex-col gap-2">
             {filtered.map((e) => (
-              <div key={e.id} className="flex items-center gap-3 rounded-card bg-white p-3 shadow-card">
-                {e.photoUrl && (
+              <button
+                key={e.id}
+                onClick={() => openEditDialog(e)}
+                className="flex w-full items-center gap-3 rounded-card bg-white p-3 text-left shadow-card"
+              >
+                {e.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={e.photoUrl} alt="" className="h-12 w-12 shrink-0 rounded-input object-cover" />
+                ) : (
+                  <span
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-input"
+                    style={{ backgroundColor: `${categoryColor(e.category)}1a` }}
+                  >
+                    <Receipt size={20} style={{ color: categoryColor(e.category) }} />
+                  </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p>{e.store ?? e.category}</p>
-                  <p className="text-sm text-text-secondary">
-                    {e.category} ・ {formatMD(new Date(e.date))}
-                    {e.note ? ` ・ ${e.note}` : ""}
+                  <p className="truncate">{e.store ?? e.category}</p>
+                  <p className="flex items-center gap-1.5 text-sm text-text-secondary">
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: categoryColor(e.category) }}
+                    />
+                    <span className="truncate">
+                      {e.category} ・ {formatMD(new Date(e.date))}
+                      {e.note ? ` ・ ${e.note}` : ""}
+                    </span>
                   </p>
                 </div>
-                <p className="font-bold">{formatYen(e.amount)}</p>
-              </div>
+                <p className="shrink-0 font-bold">{formatYen(e.amount)}</p>
+                <ChevronRight size={16} className="shrink-0 text-text-secondary/50" />
+              </button>
             ))}
           </div>
         )}
       </div>
+
+      <ExpenseFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editingExpense={editingExpense} />
     </div>
+  );
+}
+
+function ExpenseFormDialog({
+  open,
+  onOpenChange,
+  editingExpense,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editingExpense: ExpenseModel | null;
+}) {
+  const addExpense = useAppStore((s) => s.addExpense);
+  const updateExpense = useAppStore((s) => s.updateExpense);
+  const removeExpense = useAppStore((s) => s.removeExpense);
+  const [category, setCategory] = useState<string>(expenseCategories[0]);
+  const [amount, setAmount] = useState("");
+  const [store, setStore] = useState("");
+  const [note, setNote] = useState("");
+  const [date, setDate] = useState("");
+
+  // ダイアログが閉→開に切り替わった瞬間だけフォームを初期化する
+  // （todo/contacts/postingで使ってきた「前回値との比較」パターン）。
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setCategory(editingExpense?.category ?? expenseCategories[0]);
+      setAmount(editingExpense ? String(editingExpense.amount) : "");
+      setStore(editingExpense?.store ?? "");
+      setNote(editingExpense?.note ?? "");
+      setDate(toDateInputValue(editingExpense ? new Date(editingExpense.date) : new Date()));
+    }
+  }
+
+  const amountNum = parseInt(amount, 10);
+  const isValid = !!amountNum && amountNum > 0;
+
+  function save() {
+    if (!isValid) return;
+    const dateIso = date ? new Date(date).toISOString() : undefined;
+    if (editingExpense) {
+      updateExpense(editingExpense.id, {
+        category,
+        amount: amountNum,
+        store: store.trim() || undefined,
+        note: note.trim() || undefined,
+        date: dateIso,
+      });
+    } else {
+      addExpense({
+        category,
+        amount: amountNum,
+        store: store.trim() || undefined,
+        note: note.trim() || undefined,
+        date: dateIso,
+      });
+    }
+    onOpenChange(false);
+  }
+
+  function handleDelete() {
+    if (editingExpense) removeExpense(editingExpense.id);
+    onOpenChange(false);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={editingExpense ? "経費を編集" : "経費を手入力で追加"}
+      footer={
+        <>
+          {editingExpense && (
+            <button onClick={handleDelete} className="mr-auto px-3 py-2 font-semibold text-error">
+              削除
+            </button>
+          )}
+          <button onClick={() => onOpenChange(false)} className="px-3 py-2 text-text-secondary">
+            キャンセル
+          </button>
+          <button
+            onClick={save}
+            disabled={!isValid}
+            className="rounded-input bg-brand-green px-4 py-2 font-semibold text-white disabled:opacity-40"
+          >
+            保存
+          </button>
+        </>
+      }
+    >
+      {editingExpense?.photoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={editingExpense.photoUrl} alt="レシート" className="h-32 w-full rounded-card object-cover" />
+      )}
+      <div>
+        <p className="mb-1.5 text-sm font-semibold text-text-secondary">費目</p>
+        <div className="flex flex-wrap gap-2">
+          {expenseCategories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(c)}
+              className={`flex items-center gap-1.5 rounded-chip border px-3 py-1.5 text-sm font-semibold ${
+                category === c ? "border-brand-green bg-brand-green/10 text-brand-green" : "border-neutral-gray text-text-secondary"
+              }`}
+            >
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColor(c) }} />
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-text-secondary">金額（円）</label>
+        <input
+          autoFocus
+          type="number"
+          inputMode="numeric"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+          className="h-tap-target w-full rounded-input bg-neutral-gray px-3 outline-none focus:ring-2 focus:ring-brand-green"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-text-secondary">日付</label>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="h-tap-target w-full rounded-input bg-neutral-gray px-3"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-text-secondary">店名（任意）</label>
+        <input
+          value={store}
+          onChange={(e) => setStore(e.target.value)}
+          className="h-tap-target w-full rounded-input bg-neutral-gray px-3 outline-none focus:ring-2 focus:ring-brand-green"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-semibold text-text-secondary">メモ（任意）</label>
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="h-tap-target w-full rounded-input bg-neutral-gray px-3 outline-none focus:ring-2 focus:ring-brand-green"
+        />
+      </div>
+    </Dialog>
   );
 }

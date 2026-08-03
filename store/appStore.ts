@@ -136,6 +136,11 @@ interface AppState {
     date?: string;
     photoUrl?: string;
   }) => void;
+  updateExpense: (
+    id: string,
+    params: { category?: string; amount?: number; store?: string; note?: string; date?: string; photoUrl?: string }
+  ) => void;
+  removeExpense: (id: string) => void;
   publishPost: (params: { toFacebook: boolean; toLine: boolean; draftId?: string }) => void;
   addPostDraft: (params: { content: string; lineContent?: string; sourceSummary?: string }) => PostDraftModel;
   removePostDraft: (id: string) => void;
@@ -614,6 +619,25 @@ export const useAppStore = create<AppState>()(
             ...state.expenses,
           ],
         })),
+
+      updateExpense: (id, params) =>
+        set((state) => ({
+          expenses: state.expenses.map((e) =>
+            e.id === id
+              ? {
+                  ...e,
+                  ...(params.category !== undefined && { category: params.category }),
+                  ...(params.amount !== undefined && { amount: params.amount }),
+                  ...(params.store !== undefined && { store: params.store }),
+                  ...(params.note !== undefined && { note: params.note }),
+                  ...(params.date !== undefined && { date: params.date }),
+                  ...(params.photoUrl !== undefined && { photoUrl: params.photoUrl }),
+                }
+              : e
+          ),
+        })),
+
+      removeExpense: (id) => set((state) => ({ expenses: state.expenses.filter((e) => e.id !== id) })),
 
       addPostDraft: ({ content, lineContent, sourceSummary }) => {
         const draft: PostDraftModel = {
