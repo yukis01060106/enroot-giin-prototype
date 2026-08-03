@@ -32,7 +32,7 @@ export default function CalendarPage() {
   return (
     <div className="relative flex h-full flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
-        <button onClick={() => router.back()} aria-label="戻る" className="rounded-full p-2">
+        <button onClick={() => router.push("/")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold">カレンダー</h1>

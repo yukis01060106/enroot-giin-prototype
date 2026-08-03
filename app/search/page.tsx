@@ -35,7 +35,10 @@ function ResultTile({
 
 export default function SearchPage() {
   const router = useRouter();
-  const data = useAppStore((s) => s);
+  const persons = useAppStore((s) => s.persons);
+  const records = useAppStore((s) => s.records);
+  const schedules = useAppStore((s) => s.schedules);
+  const todos = useAppStore((s) => s.todos);
   const [query, setQuery] = useState("");
 
   const results = useMemo(() => {
@@ -43,12 +46,12 @@ export default function SearchPage() {
     const q = query.toLowerCase();
     const match = (text: string) => text.toLowerCase().includes(q);
     return {
-      persons: data.persons.filter((p) => match(p.name) || match(p.organization ?? "")),
-      records: data.records.filter((r) => match(r.content)),
-      schedules: data.schedules.filter((s) => match(s.title)),
-      todos: data.todos.filter((t) => match(t.title)),
+      persons: persons.filter((p) => match(p.name) || match(p.organization ?? "")),
+      records: records.filter((r) => match(r.content)),
+      schedules: schedules.filter((s) => match(s.title)),
+      todos: todos.filter((t) => match(t.title)),
     };
-  }, [query, data]);
+  }, [query, persons, records, schedules, todos]);
 
   const hasAnyResult =
     results && (results.persons.length || results.records.length || results.schedules.length || results.todos.length);
@@ -106,7 +109,13 @@ export default function SearchPage() {
               <>
                 <h2 className="py-2 text-lg font-bold">予定（{results!.schedules.length}件）</h2>
                 {results!.schedules.map((s) => (
-                  <ResultTile key={s.id} icon={CalendarClock} title={s.title} subtitle={s.location} />
+                  <ResultTile
+                    key={s.id}
+                    icon={CalendarClock}
+                    title={s.title}
+                    subtitle={s.location}
+                    onClick={() => router.push("/calendar")}
+                  />
                 ))}
               </>
             )}
@@ -114,7 +123,7 @@ export default function SearchPage() {
               <>
                 <h2 className="py-2 text-lg font-bold">やること（{results!.todos.length}件）</h2>
                 {results!.todos.map((t) => (
-                  <ResultTile key={t.id} icon={SquareCheck} title={t.title} />
+                  <ResultTile key={t.id} icon={SquareCheck} title={t.title} onClick={() => router.push("/todo")} />
                 ))}
               </>
             )}

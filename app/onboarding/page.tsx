@@ -179,8 +179,9 @@ function TextInputRow({
       )}
       <button
         onClick={() => onSubmit(value)}
+        disabled={!value.trim()}
         aria-label="送信"
-        className="flex h-tap-target w-10 shrink-0 items-center justify-center text-brand-green"
+        className="flex h-tap-target w-10 shrink-0 items-center justify-center text-brand-green disabled:opacity-30"
       >
         <Send size={22} />
       </button>

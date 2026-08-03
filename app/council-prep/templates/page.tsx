@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2, FolderArchive } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Dialog } from "@/components/ui/Dialog";
 import { formatYMD } from "@/lib/formatDate";
 import { gikaiTemplateTypes, type GikaiTemplateType } from "@/types/models";
 
@@ -14,6 +15,7 @@ export default function TemplatesPage() {
   const templates = useAppStore((s) => s.gikaiTemplates);
   const removeGikaiTemplate = useAppStore((s) => s.removeGikaiTemplate);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <div className="relative flex h-full flex-col">
@@ -41,7 +43,7 @@ export default function TemplatesPage() {
                   </span>
                   <button
                     aria-label="削除"
-                    onClick={() => removeGikaiTemplate(t.id)}
+                    onClick={() => setDeleteTarget({ id: t.id, name: t.templateName })}
                     className="text-text-secondary"
                   >
                     <Trash2 size={18} />
@@ -68,6 +70,32 @@ export default function TemplatesPage() {
       </button>
 
       <CreateTemplateSheet open={sheetOpen} onOpenChange={setSheetOpen} />
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="テンプレートを削除"
+        footer={
+          <>
+            <button onClick={() => setDeleteTarget(null)} className="px-3 py-2 text-text-secondary">
+              キャンセル
+            </button>
+            <button
+              onClick={() => {
+                if (deleteTarget) removeGikaiTemplate(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              className="rounded-input bg-error px-4 py-2 font-semibold text-white"
+            >
+              削除する
+            </button>
+          </>
+        }
+      >
+        <p className="leading-relaxed">
+          「{deleteTarget?.name}」を削除しますか？この操作は取り消せません。
+        </p>
+      </Dialog>
     </div>
   );
 }

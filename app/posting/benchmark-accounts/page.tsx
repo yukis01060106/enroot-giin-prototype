@@ -13,6 +13,7 @@ export default function BenchmarkAccountsPage() {
   const accounts = useAppStore((s) => s.benchmarkAccounts);
   const removeBenchmarkAccount = useAppStore((s) => s.removeBenchmarkAccount);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <div className="flex h-full flex-col">
@@ -45,7 +46,11 @@ export default function BenchmarkAccountsPage() {
                     </p>
                     {a.note && <p className="text-xs text-text-secondary">{a.note}</p>}
                   </div>
-                  <button onClick={() => removeBenchmarkAccount(a.id)} aria-label="削除" className="text-text-secondary">
+                  <button
+                    onClick={() => setDeleteTarget({ id: a.id, name: a.name })}
+                    aria-label="削除"
+                    className="text-text-secondary"
+                  >
                     <X size={20} />
                   </button>
                 </div>
@@ -63,6 +68,30 @@ export default function BenchmarkAccountsPage() {
       </div>
 
       <AddBenchmarkDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        title="アカウントを削除"
+        footer={
+          <>
+            <button onClick={() => setDeleteTarget(null)} className="px-3 py-2 text-text-secondary">
+              キャンセル
+            </button>
+            <button
+              onClick={() => {
+                if (deleteTarget) removeBenchmarkAccount(deleteTarget.id);
+                setDeleteTarget(null);
+              }}
+              className="rounded-input bg-error px-4 py-2 font-semibold text-white"
+            >
+              削除する
+            </button>
+          </>
+        }
+      >
+        <p className="leading-relaxed">「{deleteTarget?.name}」を削除しますか？</p>
+      </Dialog>
     </div>
   );
 }
