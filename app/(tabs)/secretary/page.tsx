@@ -231,8 +231,10 @@ export default function SecretaryPage() {
           })}
           {isTyping && (
             <div className="flex items-start">
-              <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm text-text-secondary shadow-card">
-                ・・・
+              <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-white px-4 py-3.5 shadow-card">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-secondary [animation-delay:-0.3s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-secondary [animation-delay:-0.15s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-text-secondary" />
               </div>
             </div>
           )}
@@ -244,7 +246,8 @@ export default function SecretaryPage() {
           <button
             key={label}
             onClick={() => sendQuickMenu(label)}
-            className="flex shrink-0 items-center gap-1.5 rounded-chip border border-brand-green px-3 py-1.5 text-sm font-semibold text-brand-green"
+            disabled={isTyping}
+            className="flex shrink-0 items-center gap-1.5 rounded-chip border border-brand-green px-3 py-1.5 text-sm font-semibold text-brand-green disabled:opacity-40"
           >
             <Icon size={15} />
             {label}
@@ -264,11 +267,16 @@ export default function SecretaryPage() {
           aria-label={voiceRecording ? "録音を停止" : "音声入力"}
           onClick={toggleVoiceInput}
           disabled={voiceTranscribing}
-          className={`flex h-tap-target w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+          className={`relative flex h-tap-target w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
             voiceRecording ? "bg-error text-white" : "text-brand-green"
           }`}
         >
-          {voiceTranscribing ? <Loader2 size={20} className="animate-spin" /> : <Mic size={22} />}
+          {voiceRecording && <span className="absolute inset-0 animate-ping rounded-full bg-error/60" />}
+          {voiceTranscribing ? (
+            <Loader2 size={20} className="animate-spin" />
+          ) : (
+            <Mic size={22} className="relative" />
+          )}
         </button>
         <input
           value={input}
