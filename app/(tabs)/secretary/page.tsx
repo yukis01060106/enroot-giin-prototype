@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Mic, Volume2, VolumeX, Check, X, Loader2, Calendar, ListTodo, Bot } from "lucide-react";
+import { Send, Mic, Volume2, VolumeX, Check, X, Loader2, Calendar, ListTodo, Bot, WifiOff, Phone } from "lucide-react";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter } from "@/lib/useSpeakingCharacter";
-import { greeting, quickMenuReply, freeformReply, overdueTodoCheckinMessage } from "@/lib/secretaryService";
+import {
+  greeting,
+  quickMenuReply,
+  freeformReply,
+  overdueTodoCheckinMessage,
+  reminderContactCheckinMessage,
+} from "@/lib/secretaryService";
 import { useAppStore } from "@/store/appStore";
 import { withBasePath } from "@/lib/basePath";
-import type { ChatMessageModel } from "@/types/models";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import type { SecretaryPendingCheckin, SecretaryPendingContactReminder } from "@/types/models";
 
 const quickMenuItems = [
   { label: "今日の予定", icon: Calendar },
@@ -20,20 +27,17 @@ const mockChatTranscripts = [
   "一般質問の準備について相談したい",
 ];
 
-/** チャットメッセージに、そのメッセージ発端のToDo確認チップを紐付けて保持する
- * （chipsをメッセージ一覧の末尾に別枠で表示すると、後から続く会話の下に
- * 取り残されて何に対する確認か分からなくなるため、発端のメッセージ直下に
- * 固定表示する）。 */
-type PendingCheckin = { id: string; title: string };
-type LocalMessage = ChatMessageModel & { pendingCheckins?: PendingCheckin[] };
-
 function formatTime(iso: string) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 export default function SecretaryPage() {
-  const [messages, setMessages] = useState<LocalMessage[]>([]);
+  // タブを切り替えて秘書画面に戻るたびに会話が消え、挨拶と期限切れToDoの
+  // 確認が毎回やり直しになっていたため、会話はページのローカルstateではなく
+  // ストア（アプリのセッション中は保持される）に置く。
+  const messages = useAppStore((s) => s.secretaryMessages);
+  const setMessages = useAppStore((s) => s.setSecretaryMessages);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   // 一旦デフォルトOFF（Google Cloud TTS未設定の環境ではブラウザ標準TTSの
@@ -41,25 +45,31 @@ export default function SecretaryPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [voiceRecording, setVoiceRecording] = useState(false);
   const [voiceTranscribing, setVoiceTranscribing] = useState(false);
-  const greeted = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { isSpeaking, viseme, speak } = useSpeakingCharacter();
   const toggleTodo = useAppStore((s) => s.toggleTodo);
+  const logContact = useAppStore((s) => s.logContact);
 
   useEffect(() => {
-    if (greeted.current) return;
-    greeted.current = true;
+    // 会話が既にある（前回訪問時の続き、またはこのeffectの二重発火）なら
+    // 挨拶をやり直さない。
+    if (useAppStore.getState().secretaryMessages.length > 0) return;
     const text = greeting();
     setMessages([{ role: "assistant", content: text, createdAt: new Date().toISOString() }]);
     if (voiceEnabled) speak(text);
 
-    // 期限切れのToDoがあれば、こちらから聞かれる前に美咲から確認してもらう。
-    // 確認チップはこのメッセージ自身にpendingCheckinsとして紐付けておき、後で
-    // どれだけ会話が続いても常にこの発言の直下に表示されるようにする
-    // （会話末尾に別枠で出すと、後続の会話に埋もれて何の確認か分からなくなるため）。
+    // 期限切れのToDo・そろそろ連絡の人物があれば、こちらから聞かれる前に
+    // 美咲から順番に確認してもらう（両方あれば「ところで」と続けて話しかける
+    // 自然な多段会話にするため、後者は前者の表示完了を待ってから出す）。
+    // 確認チップはそれぞれのメッセージ自身に紐付けておき、後でどれだけ会話が
+    // 続いても常にこの発言の直下に表示されるようにする（会話末尾に別枠で
+    // 出すと、後続の会話に埋もれて何の確認か分からなくなるため）。
     const overdue = useAppStore.getState().overdueTodos();
+    const reminders = useAppStore.getState().reminderPersons();
+    let delay = 400;
+
     if (overdue.length > 0) {
-      window.setTimeout(() => setIsTyping(true), 400);
+      window.setTimeout(() => setIsTyping(true), delay);
       window.setTimeout(() => {
         setIsTyping(false);
         const checkinText = overdueTodoCheckinMessage(overdue);
@@ -73,7 +83,26 @@ export default function SecretaryPage() {
           },
         ]);
         if (voiceEnabled) speak(checkinText);
-      }, 1000);
+      }, delay + 600);
+      delay += 1100;
+    }
+
+    if (reminders.length > 0) {
+      window.setTimeout(() => setIsTyping(true), delay);
+      window.setTimeout(() => {
+        setIsTyping(false);
+        const reminderText = reminderContactCheckinMessage(reminders);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: reminderText,
+            createdAt: new Date().toISOString(),
+            pendingContactReminders: reminders.map((p) => ({ id: p.id, name: p.name })),
+          },
+        ]);
+        if (voiceEnabled) speak(reminderText);
+      }, delay + 600);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -99,7 +128,7 @@ export default function SecretaryPage() {
     pushAssistant(result.reply);
   }
 
-  function respondToCheckin(messageIndex: number, todo: PendingCheckin, done: boolean) {
+  function respondToCheckin(messageIndex: number, todo: SecretaryPendingCheckin, done: boolean) {
     // 応答したToDoだけをそのメッセージのpendingCheckinsから外す（他に確認待ちが
     // 残っていればチップは表示され続ける）。
     setMessages((prev) =>
@@ -122,6 +151,34 @@ export default function SecretaryPage() {
         { role: "user", content: `「${todo.title}」はまだです`, createdAt: new Date().toISOString() },
       ]);
       pushAssistant("承知しました。無理のない範囲で、引き続きよろしくお願いします。");
+    }
+  }
+
+  function respondToContactReminder(
+    messageIndex: number,
+    person: SecretaryPendingContactReminder,
+    contacted: boolean
+  ) {
+    setMessages((prev) =>
+      prev.map((m, i) =>
+        i === messageIndex
+          ? { ...m, pendingContactReminders: m.pendingContactReminders?.filter((p) => p.id !== person.id) }
+          : m
+      )
+    );
+    if (contacted) {
+      logContact(person.id);
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: `${person.name}さんに連絡しました`, createdAt: new Date().toISOString() },
+      ]);
+      pushAssistant("ありがとうございます、最終接触日を更新しておきますね。");
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: `${person.name}さんへの連絡はまた今度にします`, createdAt: new Date().toISOString() },
+      ]);
+      pushAssistant("承知しました。またタイミングを見てお声がけしますね。");
     }
   }
 
@@ -166,10 +223,20 @@ export default function SecretaryPage() {
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-between rounded-b-[28px] bg-gradient-to-t from-black/55 to-transparent px-4 pb-3 pt-6">
           <div className="flex items-center gap-2">
             <span className="text-xl font-bold text-white">{secretaryName}</span>
-            <span className="flex items-center gap-1 rounded-chip bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
-              AI秘書
-            </span>
+            {isSupabaseConfigured ? (
+              <span className="flex items-center gap-1 rounded-chip bg-white/25 px-2 py-0.5 text-xs font-semibold text-white">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-green" />
+                AI秘書
+              </span>
+            ) : (
+              <span
+                className="flex items-center gap-1 rounded-chip bg-white/25 px-2 py-0.5 text-xs font-semibold text-white"
+                title="Claude APIが未設定のため、キーワードによる簡易応答で動作しています"
+              >
+                <WifiOff size={11} />
+                簡易応答モード
+              </span>
+            )}
           </div>
           <button
             aria-label="音声読み上げの切り替え"
@@ -234,6 +301,37 @@ export default function SecretaryPage() {
                           >
                             <X size={16} />
                             まだ
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {m.pendingContactReminders && m.pendingContactReminders.length > 0 && (
+                  <div className="mt-1 flex w-full max-w-[85%] flex-col gap-2">
+                    {m.pendingContactReminders.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between gap-2 rounded-card border border-primary-blue/40 bg-white p-3 text-sm shadow-card"
+                      >
+                        <span className="min-w-0 flex-1 truncate">{p.name}さん</span>
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            onClick={() => respondToContactReminder(i, p, true)}
+                            aria-label="連絡しました"
+                            className="flex items-center gap-1 rounded-chip bg-primary-blue px-3 py-1.5 font-semibold text-white"
+                          >
+                            <Phone size={14} />
+                            連絡した
+                          </button>
+                          <button
+                            onClick={() => respondToContactReminder(i, p, false)}
+                            aria-label="あとで連絡します"
+                            className="flex items-center gap-1 rounded-chip border border-neutral-gray px-3 py-1.5 font-semibold text-text-secondary"
+                          >
+                            <X size={16} />
+                            あとで
                           </button>
                         </div>
                       </div>

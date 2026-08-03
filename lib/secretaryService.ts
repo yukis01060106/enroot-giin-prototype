@@ -1,7 +1,8 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { useAppStore } from "@/store/appStore";
-import { fullNameWithHonorific } from "@/types/models";
-import type { ChatMessageModel, TodoModel } from "@/types/models";
+import { useAppStore, daysSinceLastContact } from "@/store/appStore";
+import { classify } from "@/lib/aiClassificationService";
+import { fullNameWithHonorific, recordCategoryLabels } from "@/types/models";
+import type { ChatMessageModel, PersonModel, TodoModel } from "@/types/models";
 
 /** Flutter版 secretary_mock_service.dart の1:1移植。 */
 
@@ -35,6 +36,17 @@ export function overdueTodoCheckinMessage(todos: TodoModel[]): string {
   }
   const lines = todos.map((t) => `・${t.title}`).join("\n");
   return `先生、期限を過ぎているタスクがいくつかあります。もう終わっているものはありますか？\n${lines}`;
+}
+
+/** 「そろそろ連絡」対象の人物について、美咲から自発的に一声かける。overdueTodoCheckinMessageと
+ * 同じく、先生からの入力を待たずチャットを開いた時点で話しかける想定。 */
+export function reminderContactCheckinMessage(persons: PersonModel[]): string {
+  if (persons.length === 1) {
+    const days = daysSinceLastContact(persons[0]);
+    return `あと、${persons[0].name}さんとは最終接触から${days}日ほど空いていますね。そろそろご連絡されますか？`;
+  }
+  const lines = persons.map((p) => `・${p.name}さん（最終接触から${daysSinceLastContact(p)}日）`).join("\n");
+  return `あと、しばらく連絡が空いている方が何人かいらっしゃいます。\n${lines}`;
 }
 
 export function quickMenuReply(menu: string): string {
@@ -109,10 +121,27 @@ export interface FreeformResult {
 }
 
 /**
+ * Claude APIが使えない場合のフォールバック。以前は「内容はメモに整理して
+ * おきますね」と返しながら実際には何も保存しておらず、口先だけの返信に
+ * なっていた（実際には何も起きないのに何かしたように見せる、この
+ * セッションで繰り返し避けてきた種類の不誠実さ）。record画面・オンボー
+ * ディングと同じclassify()＋addRecordで実際にメモとして保存し、
+ * 分類結果を伴った返信にすることで、返信の内容と実際の挙動を一致させる。
+ */
+function saveAsFallbackRecord(content: string): string {
+  const state = useAppStore.getState();
+  const result = classify(content);
+  state.addRecord({ content, categories: result.categories, aiConfidence: result.confidence });
+  const label = recordCategoryLabels[result.categories[0]];
+  return `承知しました。「${label}」の記録として保存しておきますね。詳しく話していただければ、続きも整理します。`;
+}
+
+/**
  * 自由入力への応答。「やること」追加のような簡単な操作は実際にデータへ反映する
  * （即応性が必要かつ判定が明確なので、キーワード判定のまま処理する）。
  * それ以外は本物のClaude APIに投げて自然な応答を返す。Supabase未接続/
- * Edge Function未デプロイの場合は定型文にフォールバックする。
+ * Edge Function未デプロイの場合は、実際に記録として保存した上でフォールバック
+ * する（下記saveAsFallbackRecord参照）。
  */
 export async function freeformReply(
   message: string,
@@ -139,19 +168,13 @@ export async function freeformReply(
   }
 
   if (!isSupabaseConfigured) {
-    return {
-      reply: "承知しました。よろしければ、もう少し詳しく教えてください。内容はメモに整理しておきますね。",
-      didMutateData: false,
-    };
+    return { reply: saveAsFallbackRecord(trimmed), didMutateData: true };
   }
 
   try {
     const reply = await askClaude(trimmed, history);
     return { reply, didMutateData: false };
   } catch {
-    return {
-      reply: "承知しました。よろしければ、もう少し詳しく教えてください。内容はメモに整理しておきますね。",
-      didMutateData: false,
-    };
+    return { reply: saveAsFallbackRecord(trimmed), didMutateData: true };
   }
 }

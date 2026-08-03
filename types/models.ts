@@ -223,3 +223,20 @@ export interface ChatMessageModel {
   content: string;
   createdAt: string;
 }
+
+export interface SecretaryPendingCheckin {
+  id: string;
+  title: string;
+}
+
+export interface SecretaryPendingContactReminder {
+  id: string;
+  name: string;
+}
+
+/** AI秘書チャットのメッセージ。期限切れToDoやそろそろ連絡の確認チップを
+ * メッセージに紐付けて保持するため、通常のChatMessageModelを拡張する。 */
+export interface SecretaryMessageModel extends ChatMessageModel {
+  pendingCheckins?: SecretaryPendingCheckin[];
+  pendingContactReminders?: SecretaryPendingContactReminder[];
+}

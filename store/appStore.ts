@@ -11,6 +11,7 @@ import type {
   RecordModel,
   RecordCategory,
   ScheduleModel,
+  SecretaryMessageModel,
   TodoModel,
   TodoPriority,
   UserProfileModel,
@@ -57,6 +58,16 @@ interface AppState {
   weeklyLineCount: number;
   profile: UserProfileModel;
   gikaiTemplates: GikaiTemplateModel[];
+  /**
+   * AI秘書チャットの会話履歴。以前はページのローカルstateだったため、タブを
+   * 切り替えて秘書画面に戻るたびに会話が消え、挨拶と期限切れToDoの確認が
+   * 毎回最初からやり直しになっていた。他の画面同様ストアに置くことで、
+   * セッション中（アプリの再読み込みまで）は会話が保持されるようにする。
+   */
+  secretaryMessages: SecretaryMessageModel[];
+  setSecretaryMessages: (
+    update: SecretaryMessageModel[] | ((prev: SecretaryMessageModel[]) => SecretaryMessageModel[])
+  ) => void;
 
   /** 名刺管理のタグ候補。設定画面（/settings/tags）から追加・削除できる。 */
   presetPersonTags: string[];
@@ -385,6 +396,7 @@ function seedData(profile: UserProfileModel) {
     weeklyLineCount: 0,
     profile,
     gikaiTemplates,
+    secretaryMessages: [],
   };
 }
 
@@ -437,6 +449,11 @@ export const useAppStore = create<AppState>()(
 
       updateProfile: (update) =>
         set((state) => ({ profile: update(state.profile) })),
+
+      setSecretaryMessages: (update) =>
+        set((state) => ({
+          secretaryMessages: typeof update === "function" ? update(state.secretaryMessages) : update,
+        })),
 
       addRecord: ({ content, categories, aiConfidence, photoUrl }) => {
         const now = new Date();
