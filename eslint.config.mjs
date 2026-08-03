@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Deno製Supabase Edge Function。Next.js/Node向けのlintルールと
+    // グローバル（Deno.serve等）が合わないため対象外にする。
+    "supabase/**",
   ]),
 ]);
 

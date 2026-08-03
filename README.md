@@ -44,12 +44,25 @@ npx serve out   # or 任意の静的サーバー
 
 未設定の間は設定画面に「未設定」と表示されるだけ。
 
+### 読み上げ音声（Google Cloud Text-to-Speech）
+
+ブラウザ内蔵TTS（Web Speech API）は無料だが声が機械的なため、Google Cloud TTS（`ja-JP-Neural2-C`、無料枠あり）をSupabase Edge Function経由で呼び、より自然な声で読み上げる。secretary-chatと同じ理由（APIキーをクライアントに渡さない）でEdge Function経由にしている。
+
+1. Google CloudプロジェクトでText-to-Speech APIを有効化し、APIキーを発行（無料枠・料金は[Cloud Text-to-Speech料金ページ](https://cloud.google.com/text-to-speech/pricing)で要確認。Neural2音声は月100万文字まで無料）
+2. `supabase secrets set GOOGLE_TTS_API_KEY=...` → `supabase functions deploy tts`（`supabase/functions/tts`、このリポジトリに実装済み）
+3. `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` はAI秘書チャットと共通（上記参照、追加設定不要）
+
+未設定・Edge Function呼び出し失敗の間は、自動的にブラウザ内蔵TTSにフォールバックする（クラッシュしない）。
+
 ## AIキャラクター（リップシンク）
 
-`components/character/SpeakingCharacter.tsx` — 1枚の人物写真（`public/images/secretary_misaki.png`）に、口の位置へ重ねたCSS楕円を開閉させる簡易リップシンク。ブラウザ内蔵TTS（`lib/useSpeakingCharacter.ts`）の発話に同期する。
+`components/character/SpeakingCharacter.tsx` — 1枚の人物写真（`public/images/secretary_misaki.png`）に、口の位置へ重ねたCSS楕円を開閉させる簡易リップシンク。`lib/useSpeakingCharacter.ts`が発話の駆動元を2段構えで持つ:
+
+1. Google Cloud TTSが使える場合 → 実際の音声を再生し、Web Audio APIのAnalyserNodeで実際の音量を取得して口を開閉する（本物の音量連動リップシンク）
+2. 使えない場合 → ブラウザ内蔵TTSにフォールバックし、単語境界イベント（対応ブラウザ）または一定間隔のパルス（非対応ブラウザ）で疑似的に口を動かす
 
 - `/dev-character` — バックエンド非依存の単体確認ページ
-- 将来MuseTalk等の本格的なAIリップシンクに差し替える場合は、`SpeakingCharacter`の`{isSpeaking, viseme}` props契約を保ったまま中身を差し替えるか、`useSpeakingCharacter`フックを実音声駆動の実装に置き換える（`SpeakingCharacter`側の変更は不要な設計）
+- 将来MuseTalk等の本格的なAIリップシンクに差し替える場合も、`SpeakingCharacter`の`{isSpeaking, viseme}` props契約を保ったまま`useSpeakingCharacter`フックの中身だけ差し替えればよい設計にしてある
 
 ## スコープについて
 
