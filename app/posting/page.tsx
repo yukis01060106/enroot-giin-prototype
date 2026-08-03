@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Star, Pencil, Sparkles, Share2, MessageCircle, Trash2, ChevronRight, Calculator } from "lucide-react";
+import { ArrowLeft, Star, Pencil, Sparkles, Share2, MessageCircle, Trash2, ChevronRight } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
-import { PostingStatusCard } from "@/components/PostingStatusCard";
 import { Dialog } from "@/components/ui/Dialog";
 import { formatMD } from "@/lib/formatDate";
 
@@ -91,23 +90,6 @@ export default function PostingPage() {
             </div>
           </>
         )}
-
-        <h2 className="mb-2 mt-6 text-lg font-bold">今月の発信状況</h2>
-        <PostingStatusCard />
-
-        <button
-          onClick={() => router.push("/posting/line-cost")}
-          className="mt-3 flex w-full items-center gap-3 rounded-card bg-white p-3 text-left shadow-card"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-input bg-brand-green/12 text-brand-green">
-            <Calculator size={18} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-semibold">LINE公式の料金をシミュレーション</span>
-            <span className="block text-xs text-text-secondary">配信の絞り込みでLINE代がどれだけ下がるか試算します</span>
-          </span>
-          <ChevronRight size={18} className="shrink-0 text-text-secondary" />
-        </button>
       </div>
 
       <Dialog
