@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { SecretaryTipBubble } from "@/components/SecretaryTipBubble";
+import { AiDisclosureBanner } from "@/components/AiDisclosureBanner";
 
 /**
  * 3つのウィザード（一般質問/視察報告書/政務活動費）に共通するステップUIの殻。
@@ -19,6 +20,7 @@ export function WizardShell({
   onBack,
   onNext,
   backHref = "/council-prep",
+  showAiDisclosureOnLastStep = false,
   children,
 }: {
   title: string;
@@ -30,6 +32,9 @@ export function WizardShell({
   onBack: () => void;
   onNext: () => void;
   backHref?: string;
+  /** 最終ステップがAIによる生成文章のプレビューである場合にtrue（政活費報告書のような
+   * 実データの機械的な集計のみのステップでは、AI生成物ではないためfalseのままにする）。 */
+  showAiDisclosureOnLastStep?: boolean;
   children: React.ReactNode;
 }) {
   const router = useRouter();
@@ -60,6 +65,11 @@ export function WizardShell({
         <div className="no-print">
           <SecretaryTipBubble text={tip} />
         </div>
+        {showAiDisclosureOnLastStep && isLastStep && !processing && (
+          <div className="no-print mt-3">
+            <AiDisclosureBanner />
+          </div>
+        )}
         <div className="mt-4">
           {processing ? (
             <div className="no-print flex justify-center py-8">

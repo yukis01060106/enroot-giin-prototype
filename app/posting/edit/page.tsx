@@ -27,13 +27,29 @@ function PostEditInner() {
   const draft = useAppStore((s) => (draftId ? s.postDrafts.find((d) => d.id === draftId) : undefined));
   const publishPost = useAppStore((s) => s.publishPost);
   const electionDay = useAppStore((s) => s.profile.electionDay);
-  // 公職選挙法は投票日当日の選挙運動を禁止している。活動報告のつもりの投稿が
-  // 選挙運動と見なされるリスクを避けるため、投票日当日は投稿自体をブロックする。
+  const schedules = useAppStore((s) => s.schedules);
+  // 公職選挙法は投票日当日の選挙運動を禁止しており、公示日以降も禁止される
+  // 表現がある。活動報告のつもりの投稿が選挙運動と見なされるリスクを避ける
+  // ため、投票日・公示日当日は投稿自体をブロックする。判定は「設定＞
+  // プロフィール」の投票日、またはカレンダーに投票日・公示日として登録した
+  // 予定のどちらかが今日と一致すれば発動する（カレンダー経由の方が実際の
+  // 運用に近いユーザーもいるため、両方の入口をサポートする）。
   // toISOString()はUTC基準になり日本時間の日付とずれ得るため、ローカル日付から
   // YYYY-MM-DDを組み立てる（他画面のtoDateInputValueと同じ方針）。
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const isElectionDay = !!electionDay && electionDay === todayStr;
+  const toDateStr = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const blockingSchedule = schedules.find((s) => s.scheduleType && toDateStr(s.startAt) === todayStr);
+  const isProfileElectionDay = !!electionDay && electionDay === todayStr;
+  const isElectionDay = isProfileElectionDay || !!blockingSchedule;
+  const blockReasonLabel = isProfileElectionDay
+    ? "投票日"
+    : blockingSchedule?.scheduleType === "public_notice_day"
+      ? "公示日"
+      : "投票日";
 
   // Facebook/LINE公式は読み手も文体も違うため、下書き生成時点から別々の文面を
   // 持てるようにしている（PostDraftModel.content / lineContent）。ここでも
@@ -112,9 +128,9 @@ function PostEditInner() {
           <div className="mb-4 flex items-start gap-2.5 rounded-card border-2 border-error bg-error/8 p-3.5 text-error">
             <Ban size={20} className="mt-0.5 shrink-0" />
             <div>
-              <p className="font-bold">本日は投票日のため投稿できません</p>
+              <p className="font-bold">本日は{blockReasonLabel}のため投稿できません</p>
               <p className="mt-1 text-sm leading-relaxed">
-                公職選挙法は投票日当日の選挙運動を禁止しています。活動報告のつもりの投稿でも選挙運動と見なされるおそれがあるため、投稿は翌日以降に行ってください。
+                公職選挙法は選挙運動が許される期間・表現を制限しています。活動報告のつもりの投稿でも選挙運動と見なされるおそれがあるため、投稿は翌日以降に行ってください。
               </p>
             </div>
           </div>

@@ -17,6 +17,10 @@ export interface PersonModel {
   createdAt: string;
 }
 
+/** 投票日・公示日としてカレンダーに登録された予定は、公職選挙法対応のため
+ * SNS投稿ブロックの判定にも使う（posting/edit/page.tsx参照）。 */
+export type ScheduleSpecialType = "election_day" | "public_notice_day";
+
 export interface ScheduleModel {
   id: string;
   title: string;
@@ -25,6 +29,7 @@ export interface ScheduleModel {
   endAt?: string;
   meetingProvider?: "google_meet" | "zoom";
   meetingUrl?: string;
+  scheduleType?: ScheduleSpecialType;
 }
 
 export type TodoPriority = "high" | "medium" | "low";

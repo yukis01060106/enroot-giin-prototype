@@ -11,6 +11,7 @@ import type {
   RecordModel,
   RecordCategory,
   ScheduleModel,
+  ScheduleSpecialType,
   SecretaryMessageModel,
   TodoModel,
   TodoPriority,
@@ -111,6 +112,7 @@ interface AppState {
     location?: string;
     startAt: string;
     endAt?: string;
+    scheduleType?: ScheduleSpecialType;
   }) => void;
   removeSchedule: (id: string) => void;
   addMeeting: (params: {
@@ -498,11 +500,11 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      addSchedule: ({ title, location, startAt, endAt }) =>
+      addSchedule: ({ title, location, startAt, endAt, scheduleType }) =>
         set((state) => ({
           schedules: [
             ...state.schedules,
-            { id: `manual_s_${Date.now()}`, title, location, startAt, endAt },
+            { id: `manual_s_${Date.now()}`, title, location, startAt, endAt, scheduleType },
           ],
         })),
 

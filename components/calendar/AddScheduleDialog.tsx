@@ -5,12 +5,19 @@ import { Clock } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { useAppStore } from "@/store/appStore";
 import { googleCalendarService } from "@/lib/googleCalendarService";
+import type { ScheduleSpecialType } from "@/types/models";
 
 const durationPresets = [
   { label: "30分", minutes: 30 },
   { label: "1時間", minutes: 60 },
   { label: "2時間", minutes: 120 },
 ] as const;
+
+const scheduleTypeOptions: { value: ScheduleSpecialType | null; label: string }[] = [
+  { value: null, label: "通常の予定" },
+  { value: "election_day", label: "投票日" },
+  { value: "public_notice_day", label: "公示日" },
+];
 
 function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
@@ -45,6 +52,7 @@ export function AddScheduleDialog({
   const [location, setLocation] = useState("");
   const [startTime, setStartTime] = useState(roundedNow);
   const [endTime, setEndTime] = useState(() => fromMinutes(toMinutes(roundedNow()) + 60));
+  const [scheduleType, setScheduleType] = useState<ScheduleSpecialType | null>(null);
 
   const isValidRange = toMinutes(endTime) > toMinutes(startTime);
 
@@ -54,6 +62,7 @@ export function AddScheduleDialog({
     const s = roundedNow();
     setStartTime(s);
     setEndTime(fromMinutes(toMinutes(s) + 60));
+    setScheduleType(null);
   }
 
   function buildDateTime(hhmm: string): string {
@@ -71,7 +80,13 @@ export function AddScheduleDialog({
     if (!title.trim() || !isValidRange) return;
     const startAt = buildDateTime(startTime);
     const endAt = buildDateTime(endTime);
-    addSchedule({ title: title.trim(), location: location.trim() || undefined, startAt, endAt });
+    addSchedule({
+      title: title.trim(),
+      location: location.trim() || undefined,
+      startAt,
+      endAt,
+      scheduleType: scheduleType ?? undefined,
+    });
     if (googleCalendarService.isConnected()) {
       void googleCalendarService.pushEvent({
         id: "pending",
@@ -115,6 +130,40 @@ export function AddScheduleDialog({
         placeholder="予定名"
         className="h-tap-target rounded-input bg-neutral-gray px-3 outline-none focus:ring-2 focus:ring-brand-green"
       />
+
+      <div>
+        <span className="mb-1.5 block text-xs text-text-secondary">予定の種類</span>
+        <div className="flex gap-2">
+          {scheduleTypeOptions.map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => {
+                setScheduleType(opt.value);
+                // タイトル未入力、または他の特別種別のラベルのままなら、種別名で埋める
+                // （投票日・公示日はタイトルを打たずに素早く登録できるようにするため）。
+                const prevLabels = scheduleTypeOptions.map((o) => o.label);
+                if (!title.trim() || prevLabels.includes(title.trim())) {
+                  setTitle(opt.value ? opt.label : "");
+                }
+              }}
+              className={`flex-1 rounded-chip border px-2 py-1.5 text-sm font-semibold ${
+                scheduleType === opt.value
+                  ? "border-brand-green bg-brand-green/10 text-brand-green"
+                  : "border-neutral-gray text-text-secondary"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {scheduleType && (
+          <p className="mt-1.5 text-xs text-text-secondary">
+            この日はSNS投稿が自動的にブロックされます（公職選挙法対応）
+          </p>
+        )}
+      </div>
+
       <input
         value={location}
         onChange={(e) => setLocation(e.target.value)}

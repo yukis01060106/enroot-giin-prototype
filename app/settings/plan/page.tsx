@@ -1,80 +1,40 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Users, Vote } from "lucide-react";
-import { useAppStore, planLimits, planTierLabels, type PlanTier } from "@/store/appStore";
+import { useState } from "react";
+import { ArrowLeft, Check, Users, Vote, ChevronRight, FileText } from "lucide-react";
+import { useAppStore, planTierLabels, type PlanTier } from "@/store/appStore";
 import { showToast } from "@/lib/notReady";
-
-const plans: {
-  tier: PlanTier;
-  name: string;
-  price: string;
-  features: string[];
-}[] = [
-  {
-    tier: "free",
-    name: "フリー",
-    price: "¥0 / 月",
-    features: [
-      `記録 月${planLimits.free.records}件まで`,
-      `名刺管理 ${planLimits.free.persons}件まで`,
-      "AI秘書チャット",
-      "SNS発信下書き作成",
-    ],
-  },
-  {
-    tier: "light",
-    name: "ライト",
-    price: "¥980 / 月",
-    features: [
-      `記録 月${planLimits.light.records}件まで`,
-      `名刺管理 ${planLimits.light.persons}件まで`,
-      "名刺・レシートのOCR自動読み取り",
-      "議会準備（一般質問）",
-      "LINE公式の下書き作成",
-    ],
-  },
-  {
-    tier: "standard",
-    name: "スタンダード",
-    price: "¥2,980 / 月",
-    features: [
-      `記録 月${planLimits.standard.records}件まで`,
-      "名刺管理 無制限",
-      "議会準備（一般質問・視察報告・政活費報告・住民相談管理）",
-      "経費の按分設定・自治体費目プリセット",
-      "LINE公式 配信最適化シミュレーター",
-      "活用レポート（月次サマリー）",
-    ],
-  },
-  {
-    tier: "premium",
-    name: "プレミアム",
-    price: "¥6,980 / 月",
-    features: [
-      `記録 月${planLimits.premium.records}件まで`,
-      "スタンダードの全機能",
-      "議会準備の深掘り機能",
-      "LINE公式 AI一次応答（reply、通数無課金）",
-    ],
-  },
-  {
-    tier: "voice",
-    name: "ボイス",
-    price: "¥9,800 / 月",
-    features: [`記録 月${planLimits.voice.records}件まで`, "プレミアムの全機能", "音声ブリーフィング・音声対話"],
-  },
-];
+import { Dialog } from "@/components/ui/Dialog";
+import { planCatalog as plans } from "@/lib/planCatalog";
 
 export default function PlanPage() {
   const router = useRouter();
   const planTier = useAppStore((s) => s.planTier);
   const setPlanTier = useAppStore((s) => s.setPlanTier);
+  // 特定商取引法は、有料契約の申し込み確定の直前に対価・支払時期・自動更新の
+  // 有無・解約方法・解約期限を表示することを求めている。無料プランへの変更は
+  // 商取引ではないため、この確認なしで即時に切り替える。
+  const [pendingTier, setPendingTier] = useState<PlanTier | null>(null);
+  const [agreed, setAgreed] = useState(false);
+  const pendingPlan = plans.find((p) => p.tier === pendingTier);
 
   function selectPlan(tier: PlanTier) {
     if (tier === planTier) return;
-    setPlanTier(tier);
-    showToast(`${planTierLabels[tier]}プランに変更しました（デモ環境のため実際の課金は発生しません）`);
+    if (tier === "free") {
+      setPlanTier(tier);
+      showToast("フリープランに変更しました（デモ環境のため実際の課金は発生しません）");
+      return;
+    }
+    setAgreed(false);
+    setPendingTier(tier);
+  }
+
+  function confirmSubscribe() {
+    if (!pendingTier || !agreed) return;
+    setPlanTier(pendingTier);
+    showToast(`${planTierLabels[pendingTier]}プランに変更しました（デモ環境のため実際の課金は発生しません）`);
+    setPendingTier(null);
   }
 
   return (
@@ -146,10 +106,82 @@ export default function PlanPage() {
           </p>
         </div>
 
+        {planTier !== "free" && (
+          <button
+            onClick={() => router.push("/settings/plan/invoice")}
+            className="mt-3 flex w-full items-center justify-between rounded-card bg-white p-4 shadow-card"
+          >
+            <span className="flex items-center gap-2 font-bold">
+              <FileText size={18} className="text-primary-blue" />
+              請求書を発行する
+            </span>
+            <ChevronRight size={20} className="text-text-secondary" />
+          </button>
+        )}
+
         <p className="mt-4 text-center text-xs text-text-secondary">
           プロトタイプのデモ環境のため、実際の決済は発生しません。
         </p>
       </div>
+
+      <Dialog
+        open={!!pendingPlan}
+        onOpenChange={(o) => !o && setPendingTier(null)}
+        title="お申し込み内容のご確認"
+        footer={
+          <>
+            <button onClick={() => setPendingTier(null)} className="px-3 py-2 text-text-secondary">
+              キャンセル
+            </button>
+            <button
+              onClick={confirmSubscribe}
+              disabled={!agreed}
+              className="rounded-input bg-brand-green px-4 py-2 font-semibold text-white disabled:opacity-40"
+            >
+              同意して申し込む
+            </button>
+          </>
+        }
+      >
+        {pendingPlan && (
+          <>
+            <div className="rounded-input bg-neutral-gray p-3">
+              <p className="text-lg font-bold">{pendingPlan.name}プラン</p>
+              <p className="text-2xl font-bold">{pendingPlan.price}</p>
+            </div>
+            <dl className="flex flex-col gap-2.5 text-sm">
+              <div>
+                <dt className="font-bold text-text-secondary">お支払い時期</dt>
+                <dd>初回は今すぐ、以降は毎月同日に自動的に課金されます。</dd>
+              </div>
+              <div>
+                <dt className="font-bold text-text-secondary">自動更新の有無</dt>
+                <dd>自動更新です。次回更新日の前日までに解約手続きを行わない場合、同一条件で自動的に更新されます。</dd>
+              </div>
+              <div>
+                <dt className="font-bold text-text-secondary">解約方法・解約期限</dt>
+                <dd>この「プランを変更する」画面からいつでも解約できます。次回更新日の前日23:59まで手続き可能です。</dd>
+              </div>
+            </dl>
+            <button
+              onClick={() => router.push("/settings/legal/tokushoho")}
+              className="flex items-center justify-between rounded-input border border-neutral-gray px-3 py-2.5 text-sm font-semibold text-primary-blue"
+            >
+              特定商取引法に基づく表記を確認する
+              <ChevronRight size={16} />
+            </button>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-0.5"
+              />
+              上記の支払条件・解約条件を確認し、同意します
+            </label>
+          </>
+        )}
+      </Dialog>
     </div>
   );
 }

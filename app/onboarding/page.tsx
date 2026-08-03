@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { Send, ShieldAlert } from "lucide-react";
 import { SecretaryAvatar } from "@/components/SecretaryAvatar";
 import { useAppStore } from "@/store/appStore";
 import { classify } from "@/lib/aiClassificationService";
 import type { ChatMessageModel } from "@/types/models";
 
-type Step = "greeting" | "honorific" | "recordPrompt" | "recordInput" | "done";
+type Step = "greeting" | "honorific" | "consent" | "recordPrompt" | "recordInput" | "done";
 
 /** v5.1: オンボーディングはAI秘書「藤堂美咲」がチャット形式で案内する。onboarding_view.dart の移植。 */
 export default function OnboardingPage() {
@@ -27,6 +27,7 @@ export default function OnboardingPage() {
   ]);
   const [step, setStep] = useState<Step>("greeting");
   const [input, setInput] = useState("");
+  const [aiConsentChecked, setAiConsentChecked] = useState(false);
   const displayNameRef = useRef("");
   const honorificRef = useRef("先生");
 
@@ -50,12 +51,19 @@ export default function OnboardingPage() {
   function submitHonorific(honorific: string) {
     honorificRef.current = honorific;
     addUser(honorific);
+    addAssistant(`ありがとうございます。これからは${displayNameRef.current}${honorific}とお呼びしますね。`);
     addAssistant(
-      `ありがとうございます。これからは${displayNameRef.current}${honorific}とお呼びしますね。\n` +
-        "早速ですが、1つ試していただいてもいいですか？\n今日あったことを、何でも書いてみてください。"
+      "最後に1つだけご確認させてください。ここに入力いただいた内容は、分類や提案を行うためAI（Anthropic社・Google社のサービス、米国）に送信されることがあります。\n" +
+        "住民の方の健康状態・病歴・犯罪歴など特に配慮が必要な情報は、入力しないようご注意ください。"
     );
-    setStep("recordPrompt");
+    setStep("consent");
     updateProfile((p) => ({ ...p, displayName: displayNameRef.current, honorific }));
+  }
+
+  function agreeToAiUsage() {
+    addUser("同意して次へ");
+    addAssistant("ありがとうございます。\n早速ですが、1つ試していただいてもいいですか？\n今日あったことを、何でも書いてみてください。");
+    setStep("recordPrompt");
   }
 
   function submitRecord(text: string) {
@@ -119,6 +127,32 @@ export default function OnboardingPage() {
               className="h-tap-target flex-1 rounded-input border border-primary-blue font-semibold text-primary-blue"
             >
               さん
+            </button>
+          </div>
+        )}
+        {step === "consent" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-2 rounded-card border border-warning/40 bg-warning/10 p-3 text-xs leading-relaxed text-text-primary">
+              <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />
+              <span>
+                入力内容はAIサービス（Anthropic社・Google社、米国）に送信される場合があります。健康状態・病歴・犯罪歴など特に配慮が必要な情報は入力しないでください。
+              </span>
+            </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={aiConsentChecked}
+                onChange={(e) => setAiConsentChecked(e.target.checked)}
+                className="mt-0.5"
+              />
+              上記を理解し、AIによる処理に同意します
+            </label>
+            <button
+              onClick={agreeToAiUsage}
+              disabled={!aiConsentChecked}
+              className="h-tap-target w-full rounded-input bg-brand-green font-bold text-white disabled:opacity-40"
+            >
+              同意して次へ
             </button>
           </div>
         )}

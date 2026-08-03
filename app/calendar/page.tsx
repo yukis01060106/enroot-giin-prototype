@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Plus, MapPin, Video, CalendarX2 } from "lucide-react";
+import { ArrowLeft, Plus, MapPin, Video, CalendarX2, Vote } from "lucide-react";
 import { MonthCalendar } from "@/components/calendar/MonthCalendar";
 import { AddScheduleDialog } from "@/components/calendar/AddScheduleDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -73,7 +73,15 @@ export default function CalendarPage() {
                   {s.endAt && <p className="text-xs text-text-secondary">〜{formatHM(new Date(s.endAt))}</p>}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate">{s.title}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate">{s.title}</p>
+                    {s.scheduleType && (
+                      <span className="flex shrink-0 items-center gap-1 rounded-chip bg-error/12 px-1.5 py-0.5 text-[10px] font-bold text-error">
+                        <Vote size={10} />
+                        {s.scheduleType === "election_day" ? "投票日" : "公示日"}
+                      </span>
+                    )}
+                  </div>
                   {s.location && (
                     <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-text-secondary">
                       <MapPin size={12} className="shrink-0" />

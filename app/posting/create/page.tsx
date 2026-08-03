@@ -97,6 +97,7 @@ export default function PostingCreatePage() {
       onBack={handleBack}
       onNext={handleNext}
       backHref="/posting"
+      showAiDisclosureOnLastStep
     >
       {step === 0 && (
         <div className="flex flex-col gap-3">

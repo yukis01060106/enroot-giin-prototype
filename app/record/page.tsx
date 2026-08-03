@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Mic, Camera, Loader2 } from "lucide-react";
 import { SuspenseBoundary } from "@/components/SuspenseBoundary";
+import { AiDisclosureBanner } from "@/components/AiDisclosureBanner";
 import { useAppStore } from "@/store/appStore";
 import { classify } from "@/lib/aiClassificationService";
 import { recordCategoryLabels, type RecordCategory } from "@/types/models";
@@ -214,6 +215,10 @@ function PhotoStep({ onCaptured }: { onCaptured: (photoUrl: string, caption: str
 
 function TextStep({ initial, onNext }: { initial: string; onNext: (text: string) => void }) {
   const [text, setText] = useState(initial);
+  // 住民相談メモには健康・生活状況等の要配慮個人情報が含まれ得る。AIによる
+  // 分類（この先のclassify()呼び出し）にかける前に、本人から同意を得ている
+  // ことを明示的に確認させることで、同意なく第三者情報がAI処理へ渡ることを防ぐ。
+  const [consentGiven, setConsentGiven] = useState(false);
   return (
     <div className="flex flex-1 flex-col p-4">
       <textarea
@@ -224,10 +229,19 @@ function TextStep({ initial, onNext }: { initial: string; onNext: (text: string)
         placeholder="今日あったことを書いてください"
         className="w-full flex-1 rounded-input border border-neutral-gray bg-white p-3 text-base outline-none focus:ring-2 focus:ring-brand-green"
       />
+      <label className="mt-3 flex items-start gap-2 text-sm leading-relaxed">
+        <input
+          type="checkbox"
+          checked={consentGiven}
+          onChange={(e) => setConsentGiven(e.target.checked)}
+          className="mt-0.5 shrink-0"
+        />
+        第三者・住民の方の情報を含む場合、ご本人の同意を取得済みです
+      </label>
       <button
         onClick={() => onNext(text)}
-        disabled={!text.trim()}
-        className="mt-4 h-tap-target rounded-input bg-brand-green font-bold text-white disabled:opacity-40"
+        disabled={!text.trim() || !consentGiven}
+        className="mt-3 h-tap-target rounded-input bg-brand-green font-bold text-white disabled:opacity-40"
       >
         次へ
       </button>
@@ -255,6 +269,9 @@ function ClassificationStep({
         <img src={photoUrl} alt="" className="mb-3 h-40 w-full rounded-card object-cover shadow-card" />
       )}
       <div className="rounded-card bg-white p-3 shadow-card">{content}</div>
+      <div className="mt-3">
+        <AiDisclosureBanner />
+      </div>
       <p className="mb-3 mt-4 font-bold">AIが提案するカテゴリ（タップで変更できます）</p>
       <div className="grid grid-cols-2 gap-3">
         {allCategories.map((cat) => {

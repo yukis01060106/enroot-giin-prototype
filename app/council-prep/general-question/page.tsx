@@ -85,6 +85,7 @@ export default function GeneralQuestionPage() {
       canAdvance={canAdvance}
       onBack={() => setStep((s) => s - 1)}
       onNext={goNext}
+      showAiDisclosureOnLastStep
     >
       {step === 0 && (
         <div className="flex flex-col gap-4">
