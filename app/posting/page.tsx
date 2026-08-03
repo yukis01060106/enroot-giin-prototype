@@ -38,19 +38,19 @@ export default function PostingPage() {
         <div className="flex flex-col gap-3">
           <button
             onClick={() => router.push("/posting/create")}
-            className="flex items-center gap-3 rounded-card bg-gradient-brand-green p-4 text-left text-white shadow-raised"
+            className="flex items-center gap-3 rounded-card bg-white p-4 text-left text-text-primary shadow-card"
           >
-            <Sparkles size={28} />
+            <Sparkles size={26} className="text-brand-green" />
             <span className="flex-1 font-bold leading-snug">秘書の美咲といっしょに投稿文を作成する</span>
-            <ChevronRight size={20} />
+            <ChevronRight size={20} className="text-text-secondary" />
           </button>
           <button
             onClick={() => router.push("/posting/edit")}
-            className="flex items-center gap-3 rounded-card border-2 border-primary-blue bg-white p-4 text-left text-primary-blue shadow-card"
+            className="flex items-center gap-3 rounded-card bg-white p-4 text-left text-text-primary shadow-card"
           >
-            <Pencil size={26} />
+            <Pencil size={26} className="text-primary-blue" />
             <span className="flex-1 font-bold leading-snug">自分で投稿文を作成する</span>
-            <ChevronRight size={20} />
+            <ChevronRight size={20} className="text-text-secondary" />
           </button>
         </div>
 
