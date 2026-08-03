@@ -1,14 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ChevronRight, Info, Loader2 } from "lucide-react";
-import { useAppStore, planLimits } from "@/store/appStore";
+import { useMemo, useState } from "react";
+import { ChevronRight, Info, Loader2, X, Plus } from "lucide-react";
+import { useAppStore, planLimits, planTierLabels } from "@/store/appStore";
 import { googleCalendarService, useGoogleCalendarConnection } from "@/lib/googleCalendarService";
 import { showNotReady, showToast } from "@/lib/notReady";
 import { SettingsSection, SettingsRow } from "@/components/settings/SettingsSection";
 import { PlanUsageBar } from "@/components/settings/PlanUsageBar";
 import { Dialog } from "@/components/ui/Dialog";
+import { expenseCategoryPresets, activeExpenseCategories, type ExpenseCategoryPresetKey } from "@/types/models";
 
 const honorifics = ["先生", "さん"];
 const briefingTimes = ["06:30", "07:00", "07:30", "08:00", "08:30"];
@@ -85,6 +86,9 @@ export default function SettingsPage() {
           <SettingsRow title="名前" trailing={<span>{profile.displayName}</span>} />
           <SettingsRow title="議会名" trailing={<span>{profile.councilName}</span>} />
           <SettingsRow title="議員歴" trailing={<span>{profile.termYears}年目</span>} />
+          {profile.electionDay && (
+            <SettingsRow title="投票日" trailing={<span>{profile.electionDay}</span>} />
+          )}
           <SettingsRow
             title="編集する"
             trailing={<ChevronRight size={20} className="text-text-secondary" />}
@@ -93,7 +97,7 @@ export default function SettingsPage() {
         </SettingsSection>
 
         <SettingsSection title="プラン">
-          <SettingsRow title="現在のプラン" trailing={<span>{planTier === "pro" ? "プロ" : "フリー"}</span>} />
+          <SettingsRow title="現在のプラン" trailing={<span>{planTierLabels[planTier]}</span>} />
           <PlanUsageBar label="記録" used={records.length} limit={limits.records} />
           <PlanUsageBar label="名刺管理" used={persons.length} limit={limits.persons} />
           <SettingsRow
@@ -217,6 +221,10 @@ export default function SettingsPage() {
           />
         </SettingsSection>
 
+        <SettingsSection title="経費の設定">
+          <ExpenseCategorySettings profile={profile} updateProfile={updateProfile} />
+        </SettingsSection>
+
         <SettingsSection title="カレンダー連携">
           {!googleCalendarService.isConfigured() ? (
             <SettingsRow
@@ -311,6 +319,115 @@ export default function SettingsPage() {
           記録・名刺管理・経費・ToDo等、このアプリに保存されているすべてのデータが削除され、最初の設定からやり直しになります。この操作は取り消せません。よろしいですか？
         </p>
       </Dialog>
+    </div>
+  );
+}
+
+/**
+ * 政務活動費の費目区分は自治体条例ごとに異なる（六費目の簡易セットで足りる議会も
+ * あれば、人件費・要請陳情活動費等を分ける議会もある）ため、プリセット切り替え＋
+ * カスタム入力に対応する。経費画面（一覧・登録ダイアログ・OCR分類）は
+ * activeExpenseCategories(profile)を通じてここでの設定を参照する。
+ */
+function ExpenseCategorySettings({
+  profile,
+  updateProfile,
+}: {
+  profile: ReturnType<typeof useAppStore.getState>["profile"];
+  updateProfile: ReturnType<typeof useAppStore.getState>["updateProfile"];
+}) {
+  const preset = profile.expenseCategoryPreset ?? "generic";
+  const [newCategory, setNewCategory] = useState("");
+  const customCategories = useMemo(
+    () => activeExpenseCategories({ ...profile, expenseCategoryPreset: "custom" }),
+    [profile]
+  );
+
+  function selectPreset(key: ExpenseCategoryPresetKey) {
+    updateProfile((p) => ({
+      ...p,
+      expenseCategoryPreset: key,
+      // customへ初めて切り替えるときは、直前のプリセットの費目を初期値として引き継ぐ
+      customExpenseCategories:
+        key === "custom" && (!p.customExpenseCategories || p.customExpenseCategories.length === 0)
+          ? activeExpenseCategories(p)
+          : p.customExpenseCategories,
+    }));
+  }
+
+  function addCategory() {
+    const trimmed = newCategory.trim();
+    if (!trimmed || customCategories.includes(trimmed)) return;
+    updateProfile((p) => ({ ...p, customExpenseCategories: [...customCategories, trimmed] }));
+    setNewCategory("");
+  }
+
+  function removeCategory(c: string) {
+    updateProfile((p) => ({ ...p, customExpenseCategories: customCategories.filter((x) => x !== c) }));
+  }
+
+  return (
+    <div className="px-4 py-3.5">
+      <p className="mb-2 font-semibold">費目プリセット</p>
+      <div className="flex flex-col gap-2">
+        {(Object.keys(expenseCategoryPresets) as (keyof typeof expenseCategoryPresets)[]).map((key) => (
+          <button
+            key={key}
+            onClick={() => selectPreset(key)}
+            className={`rounded-input border px-3 py-2.5 text-left text-sm ${
+              preset === key ? "border-brand-green bg-brand-green/10" : "border-neutral-gray"
+            }`}
+          >
+            <span className="font-semibold">{expenseCategoryPresets[key].label}</span>
+            <span className="mt-0.5 block text-xs text-text-secondary">
+              {expenseCategoryPresets[key].categories.join(" / ")}
+            </span>
+          </button>
+        ))}
+        <button
+          onClick={() => selectPreset("custom")}
+          className={`rounded-input border px-3 py-2.5 text-left text-sm ${
+            preset === "custom" ? "border-brand-green bg-brand-green/10" : "border-neutral-gray"
+          }`}
+        >
+          <span className="font-semibold">カスタム</span>
+          <span className="mt-0.5 block text-xs text-text-secondary">実際の議会の条例区分に合わせて自分で設定する</span>
+        </button>
+      </div>
+
+      {preset === "custom" && (
+        <div className="mt-3 rounded-input bg-neutral-gray p-3">
+          <div className="flex flex-wrap gap-2">
+            {customCategories.map((c) => (
+              <span
+                key={c}
+                className="flex items-center gap-1 rounded-chip bg-white px-2.5 py-1 text-sm shadow-card"
+              >
+                {c}
+                <button onClick={() => removeCategory(c)} aria-label={`${c}を削除`} className="text-text-secondary">
+                  <X size={13} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addCategory()}
+              placeholder="費目名を入力"
+              className="h-9 flex-1 rounded-input border border-neutral-gray bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand-green"
+            />
+            <button
+              onClick={addCategory}
+              aria-label="費目を追加"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-input bg-brand-green text-white"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

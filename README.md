@@ -54,9 +54,9 @@ npx serve out   # or 任意の静的サーバー
 
 未設定・Edge Function呼び出し失敗の間は、自動的にブラウザ内蔵TTSにフォールバックする（クラッシュしない）。
 
-### レシートのOCR自動読み取り（Google Cloud Vision）
+### レシート・名刺のOCR自動読み取り（Google Cloud Vision）
 
-経費のレシート撮影時、Google Cloud Vision（Text Detection）をSupabase Edge Function経由で呼び、実際に写っている文字から費目・金額・店名を自動入力する。費目の推測は`lib/receiptClassify.ts`のキーワード一致による簡易分類（会計士の最終確認を前提とした下書き）。
+経費のレシート撮影・名刺撮影の両方で、Google Cloud Vision（Text Detection）を同じSupabase Edge Function（`receipt-ocr`）経由で呼び、実際に写っている文字を取得する。取得した文字列からの振り分けは用途ごとに分かれており、レシートは`lib/receiptClassify.ts`（費目・金額・店名、費目一覧はプロフィールの費目プリセット/カスタム設定に追従）、名刺は`lib/businessCardClassify.ts`（氏名・所属・役職・電話・メール）が担う。いずれもキーワード一致による簡易分類（本人の最終確認を前提とした下書き）。
 
 1. Google CloudプロジェクトでCloud Vision APIを有効化し、APIキーを発行（無料枠・料金は[Cloud Vision料金ページ](https://cloud.google.com/vision/pricing)で要確認。月1,000ユニットまで無料）
 2. `supabase secrets set GOOGLE_VISION_API_KEY=...` → `supabase functions deploy receipt-ocr`（`supabase/functions/receipt-ocr`、このリポジトリに実装済み）
@@ -79,7 +79,8 @@ npx serve out   # or 任意の静的サーバー
 このNext.js移行は、Flutter版の**モックデータ忠実度での1:1移植**（未実装スタブ・「準備中」トースト等も含めて再現）。以下は意図的にスコープ外（Flutter版でも未実装だったもの）:
 
 - Supabaseの4テーブル未実装分（expenses / post_drafts / benchmark_accounts / gikai_templates）— 現状は全てクライアント側モックデータ
-- 実カメラ撮影（名刺・レシート）、実音声認識・録音、OCR — 全てモック（フェイク遅延＋ダミーデータ）
+- 実音声認識・録音 — モック（フェイク遅延＋ダミーデータ）
+- 名刺・レシートの撮影自体とOCR文字起こしは実物（Google Cloud Vision、未設定時はモックにフォールバック。上記「外部連携」参照）。氏名/所属や費目への振り分けはキーワード一致による簡易分類
 
 ## ディレクトリ構成の要点
 

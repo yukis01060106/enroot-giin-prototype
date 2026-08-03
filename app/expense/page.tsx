@@ -19,20 +19,22 @@ import { formatMD } from "@/lib/formatDate";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PieChart, PieChartLegend, colorForKey } from "@/components/ui/PieChart";
 import { Dialog } from "@/components/ui/Dialog";
-import { expenseCategories } from "@/types/models";
+import { activeExpenseCategories } from "@/types/models";
 import type { ExpenseModel } from "@/types/models";
 
 function toDateInputValue(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function categoryColor(category: string): string {
-  return colorForKey(category, expenseCategories as unknown as string[]);
+function categoryColor(category: string, activeCategories: string[]): string {
+  return colorForKey(category, activeCategories);
 }
 
 export default function ExpensePage() {
   const router = useRouter();
   const expenses = useAppStore((s) => s.expenses);
+  const profile = useAppStore((s) => s.profile);
+  const activeCategories = useMemo(() => activeExpenseCategories(profile), [profile]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [period, setPeriod] = useState(() => {
     const now = new Date();
@@ -149,9 +151,9 @@ export default function ExpensePage() {
           </p>
           {categories.length > 0 && (
             <div className="mt-4 flex items-start gap-4">
-              <PieChart data={byCategory} size={100} keyOrder={expenseCategories as unknown as string[]} />
+              <PieChart data={byCategory} size={100} keyOrder={activeCategories} />
               <div className="flex-1">
-                <PieChartLegend data={byCategory} keyOrder={expenseCategories as unknown as string[]} />
+                <PieChartLegend data={byCategory} keyOrder={activeCategories} />
               </div>
             </div>
           )}
@@ -206,7 +208,7 @@ export default function ExpensePage() {
               >
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: activeCategory === c ? "#ffffff" : categoryColor(c) }}
+                  style={{ backgroundColor: activeCategory === c ? "#ffffff" : categoryColor(c, activeCategories) }}
                 />
                 {c}
               </button>
@@ -238,9 +240,9 @@ export default function ExpensePage() {
                 ) : (
                   <span
                     className="flex h-12 w-12 shrink-0 items-center justify-center rounded-input"
-                    style={{ backgroundColor: `${categoryColor(e.category)}1a` }}
+                    style={{ backgroundColor: `${categoryColor(e.category, activeCategories)}1a` }}
                   >
-                    <Receipt size={20} style={{ color: categoryColor(e.category) }} />
+                    <Receipt size={20} style={{ color: categoryColor(e.category, activeCategories) }} />
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
@@ -248,7 +250,7 @@ export default function ExpensePage() {
                   <p className="flex items-center gap-1.5 text-sm text-text-secondary">
                     <span
                       className="h-1.5 w-1.5 shrink-0 rounded-full"
-                      style={{ backgroundColor: categoryColor(e.category) }}
+                      style={{ backgroundColor: categoryColor(e.category, activeCategories) }}
                     />
                     <span className="truncate">
                       {e.category} ・ {formatMD(new Date(e.date))}
@@ -264,7 +266,12 @@ export default function ExpensePage() {
         )}
       </div>
 
-      <ExpenseFormDialog open={dialogOpen} onOpenChange={setDialogOpen} editingExpense={editingExpense} />
+      <ExpenseFormDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        editingExpense={editingExpense}
+        categories={activeCategories}
+      />
       <MonthPickerDialog
         open={monthPickerOpen}
         onOpenChange={setMonthPickerOpen}
@@ -355,15 +362,17 @@ function ExpenseFormDialog({
   open,
   onOpenChange,
   editingExpense,
+  categories,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingExpense: ExpenseModel | null;
+  categories: string[];
 }) {
   const addExpense = useAppStore((s) => s.addExpense);
   const updateExpense = useAppStore((s) => s.updateExpense);
   const removeExpense = useAppStore((s) => s.removeExpense);
-  const [category, setCategory] = useState<string>(expenseCategories[0]);
+  const [category, setCategory] = useState<string>(categories[0]);
   const [amount, setAmount] = useState("");
   const [store, setStore] = useState("");
   const [note, setNote] = useState("");
@@ -375,7 +384,7 @@ function ExpenseFormDialog({
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setCategory(editingExpense?.category ?? expenseCategories[0]);
+      setCategory(editingExpense?.category ?? categories[0]);
       setAmount(editingExpense ? String(editingExpense.amount) : "");
       setStore(editingExpense?.store ?? "");
       setNote(editingExpense?.note ?? "");
@@ -446,7 +455,7 @@ function ExpenseFormDialog({
       <div>
         <p className="mb-1.5 text-sm font-semibold text-text-secondary">費目</p>
         <div className="flex flex-wrap gap-2">
-          {expenseCategories.map((c) => (
+          {categories.map((c) => (
             <button
               key={c}
               type="button"
@@ -455,7 +464,7 @@ function ExpenseFormDialog({
                 category === c ? "border-brand-green bg-brand-green/10 text-brand-green" : "border-neutral-gray text-text-secondary"
               }`}
             >
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColor(c) }} />
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: categoryColor(c, categories) }} />
               {c}
             </button>
           ))}

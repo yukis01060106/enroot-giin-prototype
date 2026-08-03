@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check } from "lucide-react";
-import { useAppStore, planLimits, type PlanTier } from "@/store/appStore";
+import { ArrowLeft, Check, Users, Vote } from "lucide-react";
+import { useAppStore, planLimits, planTierLabels, type PlanTier } from "@/store/appStore";
 import { showToast } from "@/lib/notReady";
 
 const plans: {
@@ -15,20 +15,54 @@ const plans: {
     tier: "free",
     name: "フリー",
     price: "¥0 / 月",
-    features: [`記録 月${planLimits.free.records}件まで`, `名刺管理 ${planLimits.free.persons}件まで`, "AI秘書チャット", "SNS発信下書き作成"],
-  },
-  {
-    tier: "pro",
-    name: "プロ",
-    price: "¥980 / 月",
     features: [
-      `記録 月${planLimits.pro.records}件まで`,
-      `名刺管理 ${planLimits.pro.persons}件まで`,
+      `記録 月${planLimits.free.records}件まで`,
+      `名刺管理 ${planLimits.free.persons}件まで`,
       "AI秘書チャット",
       "SNS発信下書き作成",
-      "視察報告書・収支報告書のPDF出力",
+    ],
+  },
+  {
+    tier: "light",
+    name: "ライト",
+    price: "¥980 / 月",
+    features: [
+      `記録 月${planLimits.light.records}件まで`,
+      `名刺管理 ${planLimits.light.persons}件まで`,
+      "名刺・レシートのOCR自動読み取り",
+      "議会準備（一般質問）",
+      "LINE公式の下書き作成",
+    ],
+  },
+  {
+    tier: "standard",
+    name: "スタンダード",
+    price: "¥2,980 / 月",
+    features: [
+      `記録 月${planLimits.standard.records}件まで`,
+      "名刺管理 無制限",
+      "議会準備（一般質問・視察報告・政活費報告・住民相談管理）",
+      "経費の按分設定・自治体費目プリセット",
+      "LINE公式 配信最適化シミュレーター",
       "活用レポート（月次サマリー）",
     ],
+  },
+  {
+    tier: "premium",
+    name: "プレミアム",
+    price: "¥6,980 / 月",
+    features: [
+      `記録 月${planLimits.premium.records}件まで`,
+      "スタンダードの全機能",
+      "議会準備の深掘り機能",
+      "LINE公式 AI一次応答（reply、通数無課金）",
+    ],
+  },
+  {
+    tier: "voice",
+    name: "ボイス",
+    price: "¥9,800 / 月",
+    features: [`記録 月${planLimits.voice.records}件まで`, "プレミアムの全機能", "音声ブリーフィング・音声対話"],
   },
 ];
 
@@ -40,13 +74,13 @@ export default function PlanPage() {
   function selectPlan(tier: PlanTier) {
     if (tier === planTier) return;
     setPlanTier(tier);
-    showToast(`${tier === "pro" ? "プロ" : "フリー"}プランに変更しました（デモ環境のため実際の課金は発生しません）`);
+    showToast(`${planTierLabels[tier]}プランに変更しました（デモ環境のため実際の課金は発生しません）`);
   }
 
   return (
     <div className="flex h-full flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 bg-gradient-primary px-2 text-white">
-        <button onClick={() => router.push("/")} aria-label="戻る" className="rounded-full p-2">
+        <button onClick={() => router.push("/settings")} aria-label="戻る" className="rounded-full p-2">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-bold">プランを変更する</h1>
@@ -91,6 +125,27 @@ export default function PlanPage() {
             );
           })}
         </div>
+
+        <div className="mt-5 rounded-card border border-neutral-gray bg-white p-4">
+          <div className="flex items-center gap-2 font-bold">
+            <Users size={18} className="text-primary-blue" />
+            会派プラン（5人以上・年額のみ）
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
+            プレミアムの全機能に加え、共有ダッシュボード・共有テンプレート・会派内チャットが使えます。お申し込みはお問い合わせからご相談ください。
+          </p>
+        </div>
+
+        <div className="mt-3 rounded-card border border-neutral-gray bg-white p-4">
+          <div className="flex items-center gap-2 font-bold">
+            <Vote size={18} className="text-accent-rose" />
+            選挙・後援会モード（別サブスクリプション）
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
+            選挙事務の日程管理・法定文書チェックリスト・ボランティア管理等は、政務活動費の按分対象外にするため、このプランとは別の請求として提供します（本体プランには含まれません）。
+          </p>
+        </div>
+
         <p className="mt-4 text-center text-xs text-text-secondary">
           プロトタイプのデモ環境のため、実際の決済は発生しません。
         </p>

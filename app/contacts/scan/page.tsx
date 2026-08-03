@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ArrowLeft, IdCard, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { ArrowLeft, IdCard, Camera, Loader2, Sparkles, FlaskConical } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
+import { extractReceiptText } from "@/lib/receiptOcrService";
+import { classifyBusinessCardText } from "@/lib/businessCardClassify";
 import { showToast } from "@/lib/notReady";
 
 const mockCards = [
@@ -14,29 +16,60 @@ const mockCards = [
 
 /**
  * 名刺撮影→内容確認の2画面を1ページのローカルstepで表現する。
- * expense/scan/page.tsx（レシートOCRのモック）と同じパターン。
+ * 文字の読み取りはGoogle Cloud Vision（OCR）をSupabase Edge Function経由で呼ぶ。
+ * expense/scan/page.tsx（レシートOCR）と同じ配管（supabase/functions/receipt-ocr）を
+ * そのまま流用し、費目の代わりにlib/businessCardClassify.tsで氏名・所属・役職・
+ * 電話・メールを推測する。Supabase/Vision未設定時はモックにフォールマックする。
  */
 export default function ContactScanPage() {
   const router = useRouter();
   const addPerson = useAppStore((s) => s.addPerson);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [usedRealOcr, setUsedRealOcr] = useState(false);
   const [name, setName] = useState("");
   const [organization, setOrganization] = useState("");
   const [title, setTitle] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  async function startScan() {
+  async function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setScanning(true);
-    // 実際にはここでカメラ撮影 → Google Cloud Vision API (OCR) を呼び出す。
-    await new Promise((r) => setTimeout(r, 1400));
-    const mock = mockCards[Math.floor(Math.random() * mockCards.length)];
-    setName(mock.name);
-    setOrganization(mock.organization);
-    setTitle(mock.title);
-    setPhone(mock.phone);
-    setEmail(mock.email);
+
+    let ok = false;
+    try {
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      const base64 = dataUrl.split(",")[1] ?? "";
+      const text = await extractReceiptText(base64);
+      const classified = classifyBusinessCardText(text);
+      setName(classified.name ?? "");
+      setOrganization(classified.organization ?? "");
+      setTitle(classified.title ?? "");
+      setPhone(classified.phone ?? "");
+      setEmail(classified.email ?? "");
+      setUsedRealOcr(true);
+      ok = true;
+    } catch {
+      // Supabase未設定 or Vision API未設定 or 通信失敗。デモ用のモックにフォールバック。
+    }
+
+    if (!ok) {
+      await new Promise((r) => setTimeout(r, 1400));
+      const mock = mockCards[Math.floor(Math.random() * mockCards.length)];
+      setName(mock.name);
+      setOrganization(mock.organization);
+      setTitle(mock.title);
+      setPhone(mock.phone);
+      setEmail(mock.email);
+      setUsedRealOcr(false);
+    }
     setScanning(false);
     setScanned(true);
   }
@@ -66,6 +99,14 @@ export default function ContactScanPage() {
       <div className="flex-1 overflow-y-auto p-6">
         {!scanned ? (
           <div className="flex h-full flex-col items-center justify-center gap-8">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onFileSelected}
+              className="hidden"
+            />
             {scanning ? (
               <>
                 <Loader2 size={36} className="animate-spin text-brand-green" />
@@ -77,10 +118,10 @@ export default function ContactScanPage() {
                   <IdCard size={64} className="text-text-secondary" />
                 </div>
                 <button
-                  onClick={startScan}
+                  onClick={() => fileInputRef.current?.click()}
                   className="flex h-tap-target w-60 items-center justify-center gap-2 rounded-input bg-brand-green font-bold text-white"
                 >
-                  <IdCard size={20} />
+                  <Camera size={20} />
                   撮影する
                 </button>
               </>
@@ -88,6 +129,17 @@ export default function ContactScanPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
+            {usedRealOcr ? (
+              <div className="flex items-start gap-2 rounded-input bg-brand-green/10 p-3 text-sm text-brand-green">
+                <Sparkles size={16} className="mt-0.5 shrink-0" />
+                <span>AIが名刺の文字を読み取り、自動入力しました。内容を確認してください。</span>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 rounded-input bg-warning/10 p-3 text-sm text-warning">
+                <FlaskConical size={16} className="mt-0.5 shrink-0" />
+                <span>読み取り機能が未設定のため、サンプルデータを表示しています。内容を書き換えて保存してください。</span>
+              </div>
+            )}
             <div>
               <label className="mb-1 block font-semibold">名前 *</label>
               <input

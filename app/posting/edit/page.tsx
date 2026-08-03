@@ -2,17 +2,23 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
-import { ArrowLeft, Image as ImageIcon, Share2, MessageCircle, Eye, ShieldAlert, Loader2, X } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, Share2, MessageCircle, Eye, ListChecks, Loader2, X, Check, Ban } from "lucide-react";
 import { SuspenseBoundary } from "@/components/SuspenseBoundary";
 import { useAppStore } from "@/store/appStore";
-import { suggestHashtags, assessRisk, riskLabels, type RiskLevel } from "@/lib/postingAiService";
+import { suggestHashtags } from "@/lib/postingAiService";
 import { showToast } from "@/lib/notReady";
 
-const riskColor: Record<RiskLevel, string> = {
-  low: "border-brand-green text-brand-green",
-  medium: "border-warning text-warning",
-  high: "border-error text-error",
-};
+/**
+ * 投稿前チェックリスト。旧「炎上リスクチェック」（AIによるキーワード一致の
+ * 自動安全判定）を、人間が自分の目で確認する方式に置き換えたもの。
+ * AIが「安全」と誤って太鼓判を押すことの責任問題を避ける狙い。
+ */
+const checklistItems = [
+  { id: "no-personal-attack", label: "特定の個人・団体への誹謗中傷や決めつけた表現がないか確認した" },
+  { id: "facts-confirmed", label: "書いている内容の事実関係を確認済みである" },
+  { id: "no-personal-info", label: "住所・電話番号など、第三者の個人情報が含まれていないか確認した" },
+  { id: "no-election-law-risk", label: "投票依頼など、公職選挙法に抵触しうる表現がないか確認した" },
+] as const;
 
 function PostEditInner() {
   const router = useRouter();
@@ -20,6 +26,14 @@ function PostEditInner() {
   const draftId = searchParams.get("draftId");
   const draft = useAppStore((s) => (draftId ? s.postDrafts.find((d) => d.id === draftId) : undefined));
   const publishPost = useAppStore((s) => s.publishPost);
+  const electionDay = useAppStore((s) => s.profile.electionDay);
+  // 公職選挙法は投票日当日の選挙運動を禁止している。活動報告のつもりの投稿が
+  // 選挙運動と見なされるリスクを避けるため、投票日当日は投稿自体をブロックする。
+  // toISOString()はUTC基準になり日本時間の日付とずれ得るため、ローカル日付から
+  // YYYY-MM-DDを組み立てる（他画面のtoDateInputValueと同じ方針）。
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const isElectionDay = !!electionDay && electionDay === todayStr;
 
   // Facebook/LINE公式は読み手も文体も違うため、下書き生成時点から別々の文面を
   // 持てるようにしている（PostDraftModel.content / lineContent）。ここでも
@@ -31,19 +45,19 @@ function PostEditInner() {
   const [toFacebook, setToFacebook] = useState(true);
   const [toLine, setToLine] = useState(!!draft?.lineContent);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [riskAcknowledged, setRiskAcknowledged] = useState(false);
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [posting, setPosting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
   const combinedText = `${toFacebook ? facebookText : ""}\n${toLine ? lineText : ""}`;
   const suggestedHashtags = useMemo(() => suggestHashtags(combinedText), [combinedText]);
-  const risk = useMemo(() => assessRisk(combinedText), [combinedText]);
-  const needsAck = risk.level !== "low";
+  const allChecked = checkedItems.size === checklistItems.length;
   const canSubmit =
     (toFacebook ? facebookText.trim() !== "" : true) &&
     (toLine ? lineText.trim() !== "" : true) &&
     (toFacebook || toLine) &&
-    (!needsAck || riskAcknowledged);
+    allChecked &&
+    !isElectionDay;
 
   const tagSuffix = useMemo(() => {
     const tags = [...selectedTags].join(" ");
@@ -83,6 +97,17 @@ function PostEditInner() {
       </header>
 
       <div className="flex-1 overflow-y-auto p-4">
+        {isElectionDay && (
+          <div className="mb-4 flex items-start gap-2.5 rounded-card border-2 border-error bg-error/8 p-3.5 text-error">
+            <Ban size={20} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="font-bold">本日は投票日のため投稿できません</p>
+              <p className="mt-1 text-sm leading-relaxed">
+                公職選挙法は投票日当日の選挙運動を禁止しています。活動報告のつもりの投稿でも選挙運動と見なされるおそれがあるため、投稿は翌日以降に行ってください。
+              </p>
+            </div>
+          </div>
+        )}
         <input
           ref={fileInputRef}
           type="file"
@@ -126,7 +151,7 @@ function PostEditInner() {
               value={facebookText}
               onChange={(e) => {
                 setFacebookText(e.target.value);
-                setRiskAcknowledged(false);
+                setCheckedItems(new Set());
               }}
               rows={5}
               placeholder="Facebook向けの投稿文"
@@ -147,7 +172,7 @@ function PostEditInner() {
               value={lineText}
               onChange={(e) => {
                 setLineText(e.target.value);
-                setRiskAcknowledged(false);
+                setCheckedItems(new Set());
               }}
               rows={5}
               placeholder="LINE公式向けの投稿文"
@@ -182,30 +207,42 @@ function PostEditInner() {
           })}
         </div>
 
-        <div className={`mt-4 rounded-card border-[1.5px] bg-white p-3 shadow-card ${riskColor[risk.level]}`}>
+        <div className="mt-4 rounded-card border-[1.5px] border-neutral-gray bg-white p-3 shadow-card">
           <div className="flex items-center gap-2 font-bold">
-            <ShieldAlert size={20} />
-            炎上リスクチェック：{riskLabels[risk.level]}
+            <ListChecks size={20} className="text-primary-blue" />
+            投稿前チェックリスト
           </div>
-          {risk.reasons.length > 0 ? (
-            <>
-              <ul className="ml-8 mt-2 flex flex-col gap-0.5 text-sm">
-                {risk.reasons.map((r) => (
-                  <li key={r}>・{r}</li>
-                ))}
-              </ul>
-              <label className="ml-8 mt-2 flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={riskAcknowledged}
-                  onChange={(e) => setRiskAcknowledged(e.target.checked)}
-                />
-                内容を確認しました。このまま投稿します
-              </label>
-            </>
-          ) : (
-            <p className="ml-8 mt-1 text-sm text-text-secondary">特に問題のある表現は検出されませんでした</p>
-          )}
+          <p className="ml-8 mt-0.5 text-xs text-text-secondary">
+            すべて確認するとチェックが入り、投稿できるようになります
+          </p>
+          <div className="mt-2 flex flex-col gap-2">
+            {checklistItems.map((item) => {
+              const checked = checkedItems.has(item.id);
+              return (
+                <button
+                  key={item.id}
+                  onClick={() =>
+                    setCheckedItems((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(item.id)) next.delete(item.id);
+                      else next.add(item.id);
+                      return next;
+                    })
+                  }
+                  className="flex items-start gap-2.5 text-left text-sm"
+                >
+                  <span
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-input border-2 ${
+                      checked ? "border-brand-green bg-brand-green text-white" : "border-neutral-gray"
+                    }`}
+                  >
+                    {checked && <Check size={13} />}
+                  </span>
+                  <span className={checked ? "text-text-secondary line-through" : ""}>{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <button

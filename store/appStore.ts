@@ -24,10 +24,25 @@ export const weeklyPostingTarget = 2;
 
 const DEFAULT_PRESET_PERSON_TAGS = ["町内会", "PTA", "商工会", "後援会", "支援者", "議員", "行政"];
 
-export type PlanTier = "free" | "pro";
+export type PlanTier = "free" | "light" | "standard" | "premium" | "voice";
+export const planTierLabels: Record<PlanTier, string> = {
+  free: "フリー",
+  light: "ライト",
+  standard: "スタンダード",
+  premium: "プレミアム",
+  voice: "ボイス",
+};
+/**
+ * recordsは月間の記録（メモ）上限。本来の料金設計における「AIクレジット」相当を
+ * このプロトタイプの既存の記録数上限で代用している（真の従量クレジット制は
+ * 実装していない）。personsはInfinityで「無制限」を表す（PlanUsageBar参照）。
+ */
 export const planLimits: Record<PlanTier, { records: number; persons: number }> = {
-  free: { records: 30, persons: 50 },
-  pro: { records: 1000, persons: 1000 },
+  free: { records: 30, persons: 20 },
+  light: { records: 300, persons: 200 },
+  standard: { records: 3000, persons: Infinity },
+  premium: { records: 8000, persons: Infinity },
+  voice: { records: 15000, persons: Infinity },
 };
 
 interface AppState {

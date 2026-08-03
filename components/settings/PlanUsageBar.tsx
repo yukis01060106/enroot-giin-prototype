@@ -1,4 +1,13 @@
 export function PlanUsageBar({ label, used, limit }: { label: string; used: number; limit: number }) {
+  if (!Number.isFinite(limit)) {
+    return (
+      <div className="px-4 py-2">
+        <p>
+          {label} {used}件（無制限）
+        </p>
+      </div>
+    );
+  }
   const ratio = limit === 0 ? 0 : Math.min(Math.max(used / limit, 0), 1);
   return (
     <div className="px-4 py-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, Printer, FileSpreadsheet } from "lucide-react";
 import { SuspenseBoundary } from "@/components/SuspenseBoundary";
 import { useAppStore } from "@/store/appStore";
@@ -42,19 +42,39 @@ function ExpenseReportInner() {
 
   const total = periodExpenses.reduce((sum, e) => sum + e.amount, 0);
 
+  // 政務活動費は「政務活動とそれ以外が混在する支出は按分」を求める自治体が多い
+  // （例: 事務所賃料の50%、ソフトウェア利用料は上限あり 等、運用は自治体ごとに異なる）。
+  // ここでは報告書単位で按分率と根拠をその場で入力できるようにする（各支出ごとの
+  // 按分はスコープ外。運用が固まったら費目単位に拡張する）。
+  const [prorationPercent, setProrationPercent] = useState(100);
+  const [prorationNote, setProrationNote] = useState("");
+  const proratedTotal = Math.round((total * prorationPercent) / 100);
+  const isProrated = prorationPercent < 100;
+
   function csvEscape(value: string): string {
     if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
     return value;
   }
 
   function downloadCsv() {
+    const summaryRows: string[][] = [
+      ["合計", String(total)],
+      ...(isProrated
+        ? [
+            ["按分率", `${prorationPercent}%`],
+            ["按分後金額", String(proratedTotal)],
+            ["按分根拠", prorationNote],
+          ]
+        : []),
+      [],
+    ];
     const header = ["日付", "費目", "店名", "メモ", "金額"];
     const rows = periodExpenses.map((e) => {
       const d = new Date(e.date);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       return [dateStr, e.category, e.store ?? "", e.note ?? "", String(e.amount)];
     });
-    const csv = [header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
+    const csv = [...summaryRows, header, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
     // 先頭にBOMを付与しないとExcel(日本語版)で開いた際に文字化けする
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -113,6 +133,57 @@ function ExpenseReportInner() {
                 </div>
               ))}
             </div>
+          )}
+          {isProrated && (
+            <div className="mt-3 border-t border-neutral-gray pt-3 text-sm">
+              <div className="flex justify-between font-bold">
+                <span>按分後（{prorationPercent}%）</span>
+                <span>{formatYen(proratedTotal)}</span>
+              </div>
+              {prorationNote && <p className="mt-1 text-text-secondary">按分根拠: {prorationNote}</p>}
+            </div>
+          )}
+        </div>
+
+        <div className="no-print mt-4 rounded-card bg-neutral-gray p-4">
+          <p className="font-bold">按分設定</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-secondary">
+            政務活動とそれ以外の利用が混在する支出は、自治体によって按分（政務活動分のみ計上）を求められる場合があります。按分が必要な場合はここで設定してください（未設定＝100%のままで問題ありません）。
+          </p>
+          <div className="mt-3 flex gap-2">
+            {[100, 75, 50, 25].map((pct) => (
+              <button
+                key={pct}
+                onClick={() => setProrationPercent(pct)}
+                className={`flex-1 rounded-input border py-2 text-sm font-semibold ${
+                  prorationPercent === pct
+                    ? "border-brand-green bg-brand-green/10 text-brand-green"
+                    : "border-neutral-gray bg-white text-text-secondary"
+                }`}
+              >
+                {pct}%
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 flex items-center gap-2">
+            <label className="text-sm text-text-secondary">その他:</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={prorationPercent}
+              onChange={(e) => setProrationPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+              className="h-9 w-20 rounded-input border border-neutral-gray bg-white px-2 text-sm"
+            />
+            <span className="text-sm text-text-secondary">%</span>
+          </div>
+          {isProrated && (
+            <input
+              value={prorationNote}
+              onChange={(e) => setProrationNote(e.target.value)}
+              placeholder="按分根拠（例: 政務活動用パソコンで使用するため50%）"
+              className="mt-3 h-10 w-full rounded-input border border-neutral-gray bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-brand-green"
+            />
           )}
         </div>
 

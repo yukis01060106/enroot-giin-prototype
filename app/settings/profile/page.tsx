@@ -14,11 +14,18 @@ export default function ProfileEditPage() {
   const [name, setName] = useState(profile.displayName);
   const [council, setCouncil] = useState(profile.councilName);
   const [termYears, setTermYears] = useState(profile.termYears);
+  const [electionDay, setElectionDay] = useState(profile.electionDay ?? "");
 
   const canSave = name.trim() !== "" && council.trim() !== "";
 
   function save() {
-    updateProfile((p) => ({ ...p, displayName: name.trim(), councilName: council.trim(), termYears }));
+    updateProfile((p) => ({
+      ...p,
+      displayName: name.trim(),
+      councilName: council.trim(),
+      termYears,
+      electionDay: electionDay || undefined,
+    }));
     router.push("/settings");
     showToast("プロフィールを更新しました");
   }
@@ -61,6 +68,27 @@ export default function ProfileEditPage() {
           <button onClick={() => setTermYears((y) => y + 1)} aria-label="増やす" className="text-primary-blue">
             <PlusCircle size={28} />
           </button>
+        </div>
+
+        <p className="mb-1 mt-4 font-bold">投票日（任意）</p>
+        <p className="mb-2 text-sm text-text-secondary">
+          設定すると、当日はSNS投稿をブロックします（公職選挙法は投票日当日の選挙運動を禁止しています）
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={electionDay}
+            onChange={(e) => setElectionDay(e.target.value)}
+            className="h-tap-target flex-1 rounded-input border border-neutral-gray bg-white px-3 outline-none focus:ring-2 focus:ring-brand-green"
+          />
+          {electionDay && (
+            <button
+              onClick={() => setElectionDay("")}
+              className="h-tap-target shrink-0 rounded-input border border-neutral-gray px-3 text-sm text-text-secondary"
+            >
+              クリア
+            </button>
+          )}
         </div>
 
         <button

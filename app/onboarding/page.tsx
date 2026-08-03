@@ -82,6 +82,7 @@ export default function OnboardingPage() {
       <div className="flex flex-col items-center gap-1 py-4">
         <SecretaryAvatar size={80} />
         <p className="font-bold">藤堂 美咲</p>
+        <p className="text-xs text-text-secondary">AIによる自動応答です</p>
       </div>
       <hr className="border-neutral-gray" />
 

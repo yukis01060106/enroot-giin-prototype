@@ -39,15 +39,52 @@ export interface TodoModel {
   priority: TodoPriority;
 }
 
-export const expenseCategories = [
-  "事務費",
-  "広報費",
-  "調査研究費",
-  "交通費",
-  "会議費",
-  "その他",
-] as const;
-export type ExpenseCategory = (typeof expenseCategories)[number];
+/**
+ * 政務活動費の費目区分は自治体条例ごとに異なり、正確な区分数は一つに決められない
+ * （簡略化した6費目ではなく、人件費・研修費・要請陳情活動費等を分ける自治体もある）。
+ * そのためアプリ内に決め打ちの1セットを持たせず、プリセットから選ぶかカスタム入力
+ * できるようにする。「standard8」はよく見られる政務活動費条例の分類例であり、
+ * 特定の自治体の正式な区分を表すものではない（あくまで「例」として提示する）。
+ */
+export const expenseCategoryPresets = {
+  generic: {
+    label: "シンプル（6費目）",
+    categories: ["事務費", "広報費", "調査研究費", "交通費", "会議費", "その他"],
+  },
+  standard8: {
+    label: "詳細（8費目の例）",
+    categories: [
+      "人件費",
+      "事務所費",
+      "資料作成費",
+      "広聴広報費",
+      "調査研究費",
+      "研修費",
+      "要請陳情活動費",
+      "その他",
+    ],
+  },
+} as const;
+export type ExpenseCategoryPresetKey = keyof typeof expenseCategoryPresets | "custom";
+export const defaultExpenseCategoryPreset: ExpenseCategoryPresetKey = "generic";
+
+/** 現在有効な費目一覧を返す。customはprofile.customExpenseCategoriesを使う（空ならgenericにフォールバック）。 */
+export function activeExpenseCategories(profile: {
+  expenseCategoryPreset?: ExpenseCategoryPresetKey;
+  customExpenseCategories?: string[];
+}): string[] {
+  const preset = profile.expenseCategoryPreset ?? defaultExpenseCategoryPreset;
+  if (preset === "custom") {
+    return profile.customExpenseCategories && profile.customExpenseCategories.length > 0
+      ? profile.customExpenseCategories
+      : expenseCategoryPresets.generic.categories.slice();
+  }
+  return expenseCategoryPresets[preset].categories.slice();
+}
+
+// 後方互換用のデフォルト費目一覧（プリセット未対応の呼び出し元向け）
+export const expenseCategories = expenseCategoryPresets.generic.categories;
+export type ExpenseCategory = string;
 
 export interface ExpenseModel {
   id: string;
@@ -106,6 +143,16 @@ export interface UserProfileModel {
   passwordChangedAt?: string;
   /** ねっこの会デジタル会員証のサムネイル写真（data URL）。 */
   avatarPhotoUrl?: string;
+  /** 経費の費目プリセット。未設定はgeneric扱い。 */
+  expenseCategoryPreset?: ExpenseCategoryPresetKey;
+  /** expenseCategoryPreset==="custom"の場合の費目一覧。 */
+  customExpenseCategories?: string[];
+  /**
+   * 投票日（YYYY-MM-DD）。設定すると当日はSNS投稿をブロックする
+   * （公職選挙法は投票日当日の選挙運動を禁止しており、通常の活動報告の
+   * つもりの投稿が選挙運動と見なされるリスクを避けるための機能）。
+   */
+  electionDay?: string;
 }
 
 export const defaultProfile: UserProfileModel = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Mic, Volume2, VolumeX, Check, X, Loader2, Calendar, ListTodo } from "lucide-react";
+import { Send, Mic, Volume2, VolumeX, Check, X, Loader2, Calendar, ListTodo, Bot } from "lucide-react";
 import { SpeakingCharacter } from "@/components/character/SpeakingCharacter";
 import { useSpeakingCharacter } from "@/lib/useSpeakingCharacter";
 import { greeting, quickMenuReply, freeformReply, overdueTodoCheckinMessage } from "@/lib/secretaryService";
@@ -182,6 +182,10 @@ export default function SecretaryPage() {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3">
+        <div className="mb-3 flex items-center justify-center gap-1.5 text-center text-xs text-text-secondary">
+          <Bot size={13} className="shrink-0" />
+          <span>これはAIとの会話です。緊急のご用件は直接お電話等でご連絡ください。</span>
+        </div>
         <div className="flex flex-col gap-1">
           {messages.map((m, i) => {
             const next = messages[i + 1];

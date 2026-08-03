@@ -1,10 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowLeft, Camera, Loader2, Receipt, Sparkles, FlaskConical } from "lucide-react";
 import { useAppStore } from "@/store/appStore";
-import { expenseCategories } from "@/types/models";
+import { activeExpenseCategories } from "@/types/models";
 import { extractReceiptText } from "@/lib/receiptOcrService";
 import { classifyReceiptText } from "@/lib/receiptClassify";
 import { showToast } from "@/lib/notReady";
@@ -30,6 +30,8 @@ const mockReceipts = [
 export default function ReceiptScanPage() {
   const router = useRouter();
   const addExpense = useAppStore((s) => s.addExpense);
+  const profile = useAppStore((s) => s.profile);
+  const activeCategories = useMemo(() => activeExpenseCategories(profile), [profile]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
@@ -55,7 +57,7 @@ export default function ReceiptScanPage() {
     try {
       const base64 = dataUrl.split(",")[1] ?? "";
       const text = await extractReceiptText(base64);
-      const classified = classifyReceiptText(text);
+      const classified = classifyReceiptText(text, activeCategories);
       setCategory(classified.category);
       setAmount(classified.amount ? String(classified.amount) : "");
       setStore(classified.store ?? "");
@@ -68,7 +70,10 @@ export default function ReceiptScanPage() {
     if (!ok) {
       await new Promise((r) => setTimeout(r, 1000));
       const mock = mockReceipts[Math.floor(Math.random() * mockReceipts.length)];
-      setCategory(mock.category);
+      // mockReceiptsの費目名は汎用6費目セット準拠。プリセットが違っても違和感のない
+      // 費目になるよう、店名+費目名のテキストを同じ分類器に通して現在の費目一覧へ寄せる。
+      const classified = classifyReceiptText(`${mock.store} ${mock.category}`, activeCategories);
+      setCategory(classified.category);
       setAmount(String(mock.amount));
       setStore(mock.store);
       setUsedRealOcr(false);
@@ -155,7 +160,7 @@ export default function ReceiptScanPage() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="h-tap-target w-full rounded-input border border-neutral-gray bg-white px-3"
               >
-                {expenseCategories.map((c) => (
+                {activeCategories.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
