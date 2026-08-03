@@ -162,15 +162,20 @@ export function AddScheduleDialog({
       {!isValidRange && <p className="text-xs text-error">終了は開始より後の時刻にしてください</p>}
 
       <div className="flex gap-2">
-        {durationPresets.map((preset) => (
-          <button
-            key={preset.label}
-            onClick={() => setEndTime(fromMinutes(toMinutes(startTime) + preset.minutes))}
-            className="rounded-chip border border-neutral-gray px-3 py-1 text-sm"
-          >
-            {preset.label}
-          </button>
-        ))}
+        {durationPresets.map((preset) => {
+          const active = toMinutes(endTime) - toMinutes(startTime) === preset.minutes;
+          return (
+            <button
+              key={preset.label}
+              onClick={() => setEndTime(fromMinutes(toMinutes(startTime) + preset.minutes))}
+              className={`rounded-chip border px-3 py-1 text-sm font-semibold ${
+                active ? "border-brand-green bg-brand-green/10 text-brand-green" : "border-neutral-gray text-text-secondary"
+              }`}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
       </div>
     </Dialog>
   );

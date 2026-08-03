@@ -65,9 +65,12 @@ export function MonthCalendar({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 px-1 text-center text-xs text-text-secondary">
-        {weekdayJa.map((w) => (
-          <div key={w} className="py-1">
+      <div className="grid grid-cols-7 px-1 text-center text-xs">
+        {weekdayJa.map((w, i) => (
+          <div
+            key={w}
+            className={`py-1 ${i === 0 ? "text-error" : i === 6 ? "text-primary-blue" : "text-text-secondary"}`}
+          >
             {w}
           </div>
         ))}
@@ -78,6 +81,11 @@ export function MonthCalendar({
           const inMonth = day.getMonth() === focusedMonth.getMonth();
           const isToday = isSameDay(day, today);
           const isSelected = isSameDay(day, selectedDay);
+          const weekday = day.getDay();
+          // 土日は数字を色分け（日本のカレンダーUIの慣習）。選択中/今日はそちらの
+          // 色を優先し、月外の日はどのみち薄グレーのままにする。
+          const weekendColor =
+            inMonth && !isSelected && !isToday ? (weekday === 0 ? "text-error" : weekday === 6 ? "text-primary-blue" : "") : "";
           return (
             <button
               key={i}
@@ -91,7 +99,7 @@ export function MonthCalendar({
                     : isToday
                       ? "bg-light-green text-white"
                       : inMonth
-                        ? "text-text-primary"
+                        ? weekendColor || "text-text-primary"
                         : "text-text-secondary/40"
                 }`}
               >
